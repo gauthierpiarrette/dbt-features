@@ -52,19 +52,26 @@ def test_lineage_uses_bundled_mermaid_not_cdn(built_catalog: Path) -> None:
 
 def test_lineage_themed_and_re_renders_on_theme_change(built_catalog: Path) -> None:
     """Mermaid must use our color palette and re-render when the theme
-    toggles, so it stays consistent with the rest of the page."""
+    toggles, so it stays consistent with the rest of the page. The
+    interactive theme/focus logic lives in static/lineage.js so it
+    can be cached and shared across builds."""
 
-    content = (built_catalog / "lineage.html").read_text()
+    page = (built_catalog / "lineage.html").read_text()
+    assert 'static/lineage.js' in page
+    # Mermaid source is embedded so JS can re-render on theme toggle
+    # without a network round-trip.
+    assert 'id="mermaid-source"' in page
+
+    js = (built_catalog / "static" / "lineage.js").read_text()
     # Themed via Mermaid's `base` theme + custom themeVariables.
-    assert 'theme: "base"' in content
-    assert "themeVariables" in content
-    # Both palettes should be present (light + dark) so toggling works
-    # without re-fetching the page.
-    assert "#1f3653" in content  # dark-mode primary
-    assert "#ddf4ff" in content  # light-mode primary
+    assert 'theme: "base"' in js
+    assert "themeVariables" in js
+    # Both palettes present (light + dark) so toggling works without re-fetch.
+    assert "#1f3653" in js  # dark-mode primary
+    assert "#ddf4ff" in js  # light-mode primary
     # MutationObserver wires up re-render on data-theme changes.
-    assert "data-theme" in content
-    assert "MutationObserver" in content
+    assert "data-theme" in js
+    assert "MutationObserver" in js
 
 
 def test_per_group_pages_written(built_catalog: Path) -> None:
@@ -314,6 +321,215 @@ def test_lifecycle_and_version_render(tmp_path: Path) -> None:
     legacy_page = (out / "groups" / "customer-features-daily" / "features" / "orders-count-legacy.html").read_text()
     assert "deprecation-notice" in legacy_page
     assert "orders_count_30d" in legacy_page  # the replacement
+
+
+def test_index_groups_by_entity_with_no_duplicate_cards(built_catalog: Path) -> None:
+    """The index page must render each feature group exactly once.
+    Tag-based duplication was the worst offender on the old layout —
+    a guardrail test prevents accidental regression."""
+
+    page = (built_catalog / "index.html").read_text()
+    # Each fixture group should appear exactly once as a card heading.
+    assert page.count("<h3>customer_features_daily</h3>") == 1
+    assert page.count("<h3>customer_features_lifetime</h3>") == 1
+    # Both fixture groups share the customer_id entity, so they end up
+    # in a single section — not in N tag-named sections.
+    assert page.count('data-entity="customer_id"') == 1
+
+
+def test_index_has_filter_toolbar_with_facets(built_catalog: Path) -> None:
+    """Faceted filtering is the index page's primary affordance now —
+    the filter chips with data-facet attributes must be present so the
+    filter.js layer can wire them up."""
+
+    page = (built_catalog / "index.html").read_text()
+    assert 'id="index-filters"' in page
+    # Entity facets (the fixture has customer_id).
+    assert 'data-facet="entity"' in page
+    assert 'data-value="customer_id"' in page
+    # Type facets — at least one type chip should exist.
+    assert 'data-facet="type"' in page
+    # Tag facets — fixture declares "customer", "daily", etc.
+    assert 'data-facet="tag"' in page
+    # The companion filter.js must be present and bundled.
+    assert "static/filter.js" in page
+    assert (built_catalog / "static" / "filter.js").exists()
+
+
+def test_card_data_attributes_for_filtering(built_catalog: Path) -> None:
+    """Each card must carry data attributes the filter layer reads."""
+
+    page = (built_catalog / "index.html").read_text()
+    assert 'data-card' in page
+    assert 'data-entities=' in page
+    assert 'data-tags=' in page
+    assert 'data-types=' in page
+    assert 'data-lifecycle=' in page
+
+
+def test_group_page_has_fqn_under_h1_with_copy(built_catalog: Path) -> None:
+    """The fully-qualified name belongs at the top under the H1, not
+    buried in a kv-grid."""
+
+    page = (built_catalog / "groups" / "customer-features-daily" / "index.html").read_text()
+    assert 'class="fqn-row"' in page
+    assert 'class="fqn"' in page
+    # Must include a copy button targeting the FQN.
+    assert 'data-copy=' in page
+
+
+def test_group_page_has_use_this_sql_snippet(built_catalog: Path) -> None:
+    """A copy-pastable SQL snippet is the most-requested affordance for
+    a feature catalog. It must be on every group page."""
+
+    page = (built_catalog / "groups" / "customer-features-daily" / "index.html").read_text()
+    assert "Use this feature group" in page
+    assert "<pre class=\"snippet\"" in page
+    # SELECT'ing the entity column should appear in the rendered SQL.
+    assert "customer_id" in page
+    # Tabs for SQL / dbt only — Feast was intentionally removed.
+    assert 'data-tab="sql"' in page
+    assert 'data-tab="dbt"' in page
+    assert 'data-tab="feast"' not in page
+
+
+def test_group_page_organized_into_trust_join_storage_blocks(built_catalog: Path) -> None:
+    """Information hierarchy on the group page should answer the three
+    consumer questions in order: Can I trust this? How do I join? Where
+    is it stored?"""
+
+    page = (built_catalog / "groups" / "customer-features-daily" / "index.html").read_text()
+    assert ">Trust<" in page
+    assert ">Join keys<" in page
+    assert ">Storage<" in page
+
+
+def test_feature_page_has_use_this_snippet_and_consumer_grid(built_catalog: Path) -> None:
+    page = (
+        built_catalog / "groups" / "customer-features-daily" / "features" / "orders-count-7d.html"
+    ).read_text()
+    assert "Use this feature" in page
+    assert "<pre class=\"snippet\"" in page
+    # Consumers render as a grid of clickable cards linking to model pages.
+    assert "consumer-grid" in page
+    assert "models/churn-model-v2/index.html" in page
+
+
+def test_model_index_and_pages_generated(built_catalog: Path) -> None:
+    """The /models/ subtree is the inverse view of features ↔ models."""
+
+    idx = built_catalog / "models" / "index.html"
+    assert idx.exists()
+    content = idx.read_text()
+    assert "ML models" in content
+    assert "churn_model_v2" in content
+    assert "ltv_model_v3" in content
+
+    churn = built_catalog / "models" / "churn-model-v2" / "index.html"
+    assert churn.exists()
+    page = churn.read_text()
+    # Inverse view: shows the feature groups it consumes from.
+    assert "customer_features_daily" in page
+    # And the specific features it pulls.
+    assert "orders_count_7d" in page
+    # Breadcrumb back to /models/
+    assert "../../models/index.html" in page
+
+
+def test_models_nav_link_present_when_models_exist(built_catalog: Path) -> None:
+    page = (built_catalog / "index.html").read_text()
+    assert 'href="./models/index.html"' in page
+    assert ">Models<" in page
+
+
+def test_search_index_carries_lifecycle_and_freshness_metadata(built_catalog: Path) -> None:
+    """Surfacing lifecycle + freshness in search lets users self-route
+    away from deprecated/stale artifacts. Without it, search is a trap."""
+
+    items = json.loads((built_catalog / "static" / "search-index.json").read_text())
+    grp = next(i for i in items if i["kind"] == "group" and i["name"] == "customer_features_daily")
+    assert "lifecycle" in grp
+    assert "entities" in grp
+    feat = next(i for i in items if i["kind"] == "feature" and i["name"] == "orders_count_7d")
+    assert "lifecycle" in feat
+    # Models also indexed (column-level used_by entries surface as a kind="model").
+    assert any(i["kind"] == "model" and i["name"] == "churn_model_v2" for i in items)
+
+
+def test_lineage_clusters_by_entity(built_catalog: Path) -> None:
+    """Subgraphs by entity keep the lineage graph readable as catalog grows."""
+
+    page = (built_catalog / "lineage.html").read_text()
+    # Mermaid subgraph syntax appears once per distinct entity.
+    assert "subgraph" in page
+    # Entity names appear as cluster labels.
+    assert "customer_id" in page
+
+
+def test_lineage_has_search_focus_control(built_catalog: Path) -> None:
+    page = (built_catalog / "lineage.html").read_text()
+    assert 'id="lineage-search"' in page
+    assert "Focus a node" in page
+
+
+def test_theme_toggle_is_two_state(built_catalog: Path) -> None:
+    """Theme is a single click button — light ↔ dark, no popover/system mode."""
+
+    page = (built_catalog / "index.html").read_text()
+    assert 'id="theme-toggle"' in page
+    assert "icon-sun" in page
+    assert "icon-moon" in page
+    # The previous tri-state popover menu is gone; no menu, no system option.
+    assert 'id="theme-menu"' not in page
+    assert 'data-theme-pref="system"' not in page
+
+    js = (built_catalog / "static" / "theme.js").read_text()
+    # Two-state pref persisted to localStorage; no system/matchMedia logic.
+    assert "dbt-features-theme" in js
+    assert "matchMedia" not in js
+
+
+def test_theme_toggle_icons_render_in_safari(built_catalog: Path) -> None:
+    """Safari (and others) render SVGs as 0×0 inside flex containers when
+    no width/height attributes are set. Both icons must declare them, and
+    CSS must set an explicit display rule for the dark-mode default
+    (the moon icon) — not rely on the user-agent default for SVG."""
+
+    page = (built_catalog / "index.html").read_text()
+    assert 'class="icon-sun" width="16" height="16"' in page
+    assert 'class="icon-moon" width="16" height="16"' in page
+
+    css = (built_catalog / "static" / "style.css").read_text()
+    # Explicit display rules for both states (no reliance on UA default).
+    assert ".theme-toggle .icon-moon { display: block; }" in css
+    assert ".theme-toggle .icon-sun  { display: none; }" in css
+
+
+def test_type_chip_dot_matches_type_bar_color(built_catalog: Path) -> None:
+    """The TYPE filter chips must show a color dot that matches the
+    per-card type-bar segment color. Both must derive from the same CSS
+    variable so they can never drift out of sync."""
+
+    css = (built_catalog / "static" / "style.css").read_text()
+    # The chip dot uses currentColor, which on .pill-<type> equals
+    # var(--pill-<type>-fg). The type-bar segments use the same
+    # variable directly, guaranteeing visual match.
+    assert '.chip[data-facet="type"] .chip-label::before' in css
+    assert "background: currentColor;" in css
+    assert ".type-bar-numeric    { background: var(--pill-numeric-fg); }" in css
+    assert ".pill-numeric { background: var(--pill-numeric); color: var(--pill-numeric-fg); }" in css
+
+
+def test_search_is_modal_with_keyboard_shortcut(built_catalog: Path) -> None:
+    """The cmd-k modal is the search entry point on every page."""
+
+    page = (built_catalog / "index.html").read_text()
+    assert 'id="search-dialog"' in page
+    assert 'id="search-trigger"' in page
+    js = (built_catalog / "static" / "search.js").read_text()
+    # Cmd/Ctrl-K and "/" both open the dialog.
+    assert "metaKey" in js
+    assert "openDialog" in js
 
 
 def test_empty_catalog_renders(tmp_path: Path) -> None:
