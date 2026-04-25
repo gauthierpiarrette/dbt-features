@@ -78,6 +78,27 @@ def test_per_group_pages_written(built_catalog: Path) -> None:
     assert "feature_date" in content  # appears as timestamp column
 
 
+def test_lineage_labels_disambiguate_sources(built_catalog: Path) -> None:
+    """The two consumer-style sections must be unambiguous: dbt-graph
+    children vs. manually declared ML model consumers. The old generic
+    'Used by' / 'Downstream (dbt)' labels invited confusion."""
+
+    group_page = (built_catalog / "groups" / "customer-features-daily" / "index.html").read_text()
+    assert "Downstream dbt models" in group_page
+    assert "Declared ML consumers" in group_page
+    # Old labels must not reappear.
+    assert "Downstream (dbt)" not in group_page
+    assert ">Used by<" not in group_page
+    assert ">ML consumers<" not in group_page
+
+    # Same disambiguation on the individual feature page.
+    feature_page = (
+        built_catalog / "groups" / "customer-features-daily" / "features" / "orders-count-7d.html"
+    ).read_text()
+    assert "Declared ML consumers" in feature_page
+    assert ">Used by<" not in feature_page
+
+
 def test_per_feature_pages_written(built_catalog: Path) -> None:
     f = built_catalog / "groups" / "customer-features-daily" / "features" / "orders-count-7d.html"
     assert f.exists()

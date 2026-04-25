@@ -54,7 +54,7 @@
         <th>Column type</th>
         <th>Null behavior</th>
         <th>Status</th>
-        <th>Used by</th>
+        <th>Declared ML consumers</th>
       </tr>
     </thead>
     <tbody>
@@ -93,7 +93,7 @@
       {% else %}<p class="muted">None</p>{% endif %}
     </div>
     <div>
-      <h3>Downstream (dbt)</h3>
+      <h3>Downstream dbt models</h3>
       {% if group.downstream %}
       <ul class="lineage-list">
         {% for ref in group.downstream %}
@@ -103,15 +103,16 @@
         </li>
         {% endfor %}
       </ul>
-      {% else %}<p class="muted">None</p>{% endif %}
+      <p class="muted small">Auto-derived from the dbt graph.</p>
+      {% else %}<p class="muted">None.</p>{% endif %}
     </div>
     <div>
-      <h3>ML consumers</h3>
+      <h3>Declared ML consumers</h3>
       {% if declared_consumers %}
       <ul class="lineage-list">
         {% for c in declared_consumers %}<li><code>{{ c }}</code></li>{% endfor %}
       </ul>
-      <p class="muted small">Declared via <code>used_by</code> on individual features.</p>
+      <p class="muted small">Declared manually via <code>used_by</code> on individual features.</p>
       {% else %}<p class="muted">None declared.</p>{% endif %}
     </div>
   </div>

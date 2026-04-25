@@ -39,12 +39,12 @@
 </section>
 
 <section>
-  <h2>Used by</h2>
+  <h2>Declared ML consumers</h2>
   {% if feature.used_by %}
   <ul class="lineage-list">
     {% for c in feature.used_by %}<li><code>{{ c }}</code></li>{% endfor %}
   </ul>
-  <p class="muted small">Declared via <code>meta.feature_catalog.used_by</code> on this column.</p>
+  <p class="muted small">Declared manually via <code>meta.feature_catalog.used_by</code> on this column. dbt-internal consumers are listed under "Downstream dbt models" on the feature group page.</p>
   {% else %}<p class="muted">No declared consumers.</p>{% endif %}
 </section>
 {% endblock %}
