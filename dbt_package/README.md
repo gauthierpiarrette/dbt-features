@@ -8,20 +8,20 @@ the catalog.
 ## What this package does (and what it doesn't)
 
 **This package** is intentionally narrow. It scans `feature_catalog` blocks
-in your project and flags any field name that isn't recognized — e.g. it
+in your project and flags any field name that isn't recognized - e.g. it
 will catch:
 
 ```yaml
 meta:
   feature_catalog:
-    is_featur_table: true   # typo — silently ignored without this check
+    is_featur_table: true   # typo - silently ignored without this check
 ```
 
 That's the one failure mode the Python tool can't catch: a typo'd
 `is_feature_table` means the model never enters the catalog, so there's
 nothing for the Python tool to validate.
 
-**The Python tool** (`dbt-features validate`) handles everything else —
+**The Python tool** (`dbt-features validate`) handles everything else -
 enum values, freshness shape, integer ranges, `extra="forbid"` on every
 nested field, etc. It uses Pydantic and is the canonical validator. Keeping
 the deep rules in one place prevents this dbt package and the Python tool
@@ -42,7 +42,7 @@ In your `packages.yml`:
 packages:
   - git: "https://github.com/gauthierpiarrette/dbt-features.git"
     subdirectory: "dbt_package"
-    revision: "v0.2.0"
+    revision: "v0.3.0"
 ```
 
 Then `dbt deps`.
