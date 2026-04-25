@@ -6,6 +6,30 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- **Warehouse enrichment** (`--connection PROFILE` on `build`):
+  - DuckDB, Postgres, Redshift (password + IAM), Snowflake (password,
+    key-pair, SSO/OAuth), BigQuery (ADC, service-account, inline JSON).
+  - Reads `~/.dbt/profiles.yml` (honors `$DBT_PROFILES_DIR`).
+  - Renders green/yellow/red freshness status, last-update age, row count,
+    null %, and per-feature distinct-value count in the UI.
+  - JSON cache at `<output>/.cache/enrichment.json` with configurable TTL.
+    Survives `--clean` rebuilds; reused by subsequent `build` calls without
+    `--connection`.
+  - Per-feature-group failures captured on the snapshot rather than
+    aborting the build.
+- **Lifecycle + `definition_version`** schema fields with rendered
+  badges and an inline deprecation banner pointing at the replacement.
+- **Mermaid bundled locally** — lineage view works offline / behind CSP /
+  in air-gapped environments.
+- **Themed Mermaid** to match the site palette and re-render on the dark/light
+  toggle.
+- **`demo` command** — one-shot zero-setup catalog rendered into a temp
+  directory, with synthesized enrichment so screenshots show every state.
+- **Dark mode** — defaults to dark; toggle persists in localStorage.
+- **Favicon**.
+
+
 ## [0.1.0] - Initial release
 
 ### Added

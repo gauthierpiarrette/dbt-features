@@ -10,7 +10,7 @@ This example uses [duckdb](https://duckdb.org/) so you can run it locally with
 no warehouse setup.
 
 ```bash
-pip install dbt-duckdb dbt-features
+pip install dbt-duckdb 'dbt-features[duckdb]'
 
 cd examples/jaffle_shop_features
 dbt deps                                   # no deps, but harmless
@@ -18,7 +18,17 @@ dbt seed
 dbt run
 dbt parse                                  # produces target/manifest.json
 
+# Build the catalog without warehouse enrichment
 dbt-features build --output ./catalog
+
+# Or with warehouse enrichment — runs read-only queries against the
+# DuckDB file dbt just wrote, fills in actual freshness + null % +
+# cardinality:
+dbt-features build \
+    --connection jaffle_features \
+    --profiles-dir . \
+    --output ./catalog
+
 dbt-features serve --output ./catalog
 ```
 
