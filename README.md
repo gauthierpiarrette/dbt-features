@@ -116,27 +116,33 @@ models:
 
 ### Model-level fields (`meta.feature_catalog`)
 
-| Field              | Type            | Required | Notes                                                          |
-|--------------------|-----------------|----------|----------------------------------------------------------------|
-| `is_feature_table` | bool            | yes      | Must be `true` to be picked up.                                |
-| `entity`           | str \| str[]    | rec.     | Entity column(s) — the "who/what" the features describe.       |
-| `grain`            | str[]           | rec.     | Grain columns. Typically entity + timestamp.                   |
-| `timestamp_column` | str             | rec.     | Anchor for time-relative reasoning.                            |
-| `freshness`        | object          | no       | `warn_after` / `error_after` (same shape as dbt source freshness). |
-| `owner`            | str             | no       | Email or team name.                                            |
-| `tags`             | str[]           | no       | For grouping / search.                                         |
-| `description`      | str             | no       | Falls back to dbt model description.                           |
-| `version`          | str             | no       | Schema version. Defaults to `"0.1"`.                           |
+| Field                | Type            | Required | Notes                                                          |
+|----------------------|-----------------|----------|----------------------------------------------------------------|
+| `is_feature_table`   | bool            | yes      | Must be `true` to be picked up.                                |
+| `entity`             | str \| str[]    | rec.     | Entity column(s) — the "who/what" the features describe.       |
+| `grain`              | str[]           | rec.     | Grain columns. Typically entity + timestamp.                   |
+| `timestamp_column`   | str             | rec.     | Anchor for time-relative reasoning.                            |
+| `freshness`          | object          | no       | `warn_after` / `error_after` (same shape as dbt source freshness). |
+| `owner`              | str             | no       | Email or team name.                                            |
+| `tags`               | str[]           | no       | For grouping / search.                                         |
+| `description`        | str             | no       | Falls back to dbt model description.                           |
+| `definition_version` | int             | no       | Bumped when the table's semantic definition changes. Defaults to `1`. |
+| `lifecycle`          | enum            | no       | `active` (default), `preview`, `deprecated`.                   |
+| `replacement`        | str             | no       | Name of the replacement table — most useful with `lifecycle: deprecated`. |
+| `version`            | str             | no       | Metadata schema version. Defaults to `"0.1"`. Reserved for future use. |
 
 ### Column-level fields (`columns[].meta.feature_catalog`)
 
-| Field           | Type     | Required | Notes                                                                |
-|-----------------|----------|----------|----------------------------------------------------------------------|
-| `is_feature`    | bool     | yes      | Must be `true` to be picked up. Lets you keep keys/timestamps clean. |
-| `feature_type`  | enum     | rec.     | `numeric`, `categorical`, `boolean`, `embedding`, `timestamp`, `text`, `identifier`. |
-| `null_behavior` | enum     | no       | `zero`, `mean`, `propagate`, `error`, `ignore`. Documentation only.  |
-| `used_by`       | str[]    | no       | Models / systems consuming this feature (manual list for v0.1).      |
-| `description`   | str      | no       | Falls back to dbt column description.                                |
+| Field                | Type     | Required | Notes                                                                |
+|----------------------|----------|----------|----------------------------------------------------------------------|
+| `is_feature`         | bool     | yes      | Must be `true` to be picked up. Lets you keep keys/timestamps clean. |
+| `feature_type`       | enum     | rec.     | `numeric`, `categorical`, `boolean`, `embedding`, `timestamp`, `text`, `identifier`. |
+| `null_behavior`      | enum     | no       | `zero`, `mean`, `propagate`, `error`, `ignore`. Documentation only.  |
+| `used_by`            | str[]    | no       | Models / systems consuming this feature (manual list for v0.1).      |
+| `description`        | str      | no       | Falls back to dbt column description.                                |
+| `definition_version` | int      | no       | Bumped when the feature's semantic definition changes. Defaults to `1`. |
+| `lifecycle`          | enum     | no       | `active` (default), `preview`, `deprecated`.                         |
+| `replacement`        | str      | no       | Name of the replacement feature — most useful with `lifecycle: deprecated`. |
 
 The schema is validated by Pydantic. Unknown fields are rejected — typos
 become errors instead of silently dropped data.

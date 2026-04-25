@@ -16,6 +16,7 @@ from dbt_features.schema import (
     FeatureTableMeta,
     FeatureType,
     Freshness,
+    Lifecycle,
     NullBehavior,
 )
 
@@ -29,6 +30,9 @@ class Feature:
     null_behavior: NullBehavior | None
     used_by: tuple[str, ...]
     tags: tuple[str, ...]
+    definition_version: int = 1
+    lifecycle: Lifecycle = Lifecycle.ACTIVE
+    replacement: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -92,6 +96,18 @@ class FeatureGroup:
     @property
     def tags(self) -> list[str]:
         return list(self.meta.tags)
+
+    @property
+    def definition_version(self) -> int:
+        return self.meta.definition_version
+
+    @property
+    def lifecycle(self) -> Lifecycle:
+        return self.meta.lifecycle
+
+    @property
+    def replacement(self) -> str | None:
+        return self.meta.replacement
 
     @property
     def fully_qualified_name(self) -> str:

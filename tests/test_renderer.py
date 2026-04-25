@@ -147,6 +147,36 @@ def test_render_is_idempotent(tmp_path: Path, project_dir: Path) -> None:
     assert first.split("Built ")[0] == second.split("Built ")[0]
 
 
+def test_lifecycle_and_version_render(tmp_path: Path) -> None:
+    """Deprecated/preview/version metadata must visibly surface in the UI."""
+
+    from dbt_features.demo import demo_manifest_path
+    from dbt_features.parser import parse_project
+    from dbt_features.renderer import render_catalog
+
+    cat = parse_project(tmp_path, manifest_path=demo_manifest_path())
+    out = tmp_path / "site"
+    render_catalog(cat, out)
+
+    # A preview feature table renders the preview-notice and the lifecycle pill.
+    lifetime_page = (out / "groups" / "customer-features-lifetime" / "index.html").read_text()
+    assert "preview-notice" in lifetime_page
+    assert "lifecycle-preview" in lifetime_page
+
+    # A deprecated feature renders a deprecation notice and the row is decorated.
+    daily_page = (out / "groups" / "customer-features-daily" / "index.html").read_text()
+    assert "row-deprecated" in daily_page  # the deprecated demo column
+    assert "lifecycle-deprecated" in daily_page
+
+    # A versioned feature shows the v2 badge.
+    assert "v2" in daily_page
+
+    # The deprecated feature's individual page calls out its replacement.
+    legacy_page = (out / "groups" / "customer-features-daily" / "features" / "orders-count-legacy.html").read_text()
+    assert "deprecation-notice" in legacy_page
+    assert "orders_count_30d" in legacy_page  # the replacement
+
+
 def test_empty_catalog_renders(tmp_path: Path) -> None:
     """Edge case: a project with no feature tables should still produce output."""
 

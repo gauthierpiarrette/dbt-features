@@ -137,6 +137,7 @@ def test_demo_data_is_valid() -> None:
 
     from dbt_features.demo import demo_manifest_path
     from dbt_features.parser import parse_project
+    from dbt_features.schema import Lifecycle
 
     path = demo_manifest_path()
     assert path.exists()
@@ -146,6 +147,11 @@ def test_demo_data_is_valid() -> None:
     # At least one group has freshness, one has multi-domain tags, etc.
     assert any(g.freshness is not None for g in cat.feature_groups)
     assert {"customer", "store"}.issubset(set(cat.all_tags))
+    # Demo exercises lifecycle + version fields so the rendered site shows them off.
+    assert any(g.lifecycle == Lifecycle.PREVIEW for g in cat.feature_groups)
+    all_features = [f for g in cat.feature_groups for f in g.features]
+    assert any(f.lifecycle == Lifecycle.DEPRECATED for f in all_features)
+    assert any(f.definition_version > 1 for f in all_features)
 
 
 def test_demo_command_builds_and_serves(monkeypatch: object, tmp_path: Path) -> None:

@@ -209,6 +209,9 @@ def _build_features(
                 null_behavior=f_meta.null_behavior,
                 used_by=tuple(f_meta.used_by),
                 tags=tuple(column_tags),
+                definition_version=f_meta.definition_version,
+                lifecycle=f_meta.lifecycle,
+                replacement=f_meta.replacement,
             )
         )
 

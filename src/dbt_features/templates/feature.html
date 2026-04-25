@@ -10,9 +10,20 @@
   <h1><code>{{ feature.name }}</code></h1>
   {% if feature.description %}<p class="lede">{{ feature.description }}</p>{% endif %}
   <div class="badges">
+    {% if feature.lifecycle.value != 'active' %}<span class="lifecycle lifecycle-{{ feature.lifecycle.value }}">{{ feature.lifecycle.value }}</span>{% endif %}
+    {% if feature.definition_version > 1 %}<span class="badge badge-version">v{{ feature.definition_version }}</span>{% endif %}
     {% if feature.feature_type %}<span class="pill pill-{{ feature.feature_type.value }}">{{ feature.feature_type.value }}</span>{% endif %}
     {% for tag in feature.tags %}<span class="tag">{{ tag }}</span>{% endfor %}
   </div>
+  {% if feature.lifecycle.value == 'deprecated' and feature.replacement %}
+  <p class="deprecation-notice">
+    <strong>Deprecated.</strong> Use <code>{{ feature.replacement }}</code> instead.
+  </p>
+  {% elif feature.lifecycle.value == 'deprecated' %}
+  <p class="deprecation-notice"><strong>Deprecated.</strong></p>
+  {% elif feature.lifecycle.value == 'preview' %}
+  <p class="preview-notice"><strong>Preview.</strong> This feature is not yet considered production-ready.</p>
+  {% endif %}
 </section>
 
 <section class="kv-grid">
@@ -20,6 +31,8 @@
   {% if feature.column_type %}<div><dt>Warehouse type</dt><dd><code>{{ feature.column_type }}</code></dd></div>{% endif %}
   {% if feature.feature_type %}<div><dt>Semantic type</dt><dd>{{ feature.feature_type.value }}</dd></div>{% endif %}
   {% if feature.null_behavior %}<div><dt>Null behavior</dt><dd>{{ feature.null_behavior.value }}</dd></div>{% endif %}
+  {% if feature.definition_version > 1 %}<div><dt>Definition version</dt><dd>v{{ feature.definition_version }}</dd></div>{% endif %}
+  <div><dt>Lifecycle</dt><dd>{{ feature.lifecycle.value }}{% if feature.replacement %} → <code>{{ feature.replacement }}</code>{% endif %}</dd></div>
   {% if group.entity_columns %}<div><dt>Entity grain</dt><dd>{% for c in group.entity_columns %}<code>{{ c }}</code>{% if not loop.last %}, {% endif %}{% endfor %}</dd></div>{% endif %}
   {% if group.timestamp_column %}<div><dt>Time anchor</dt><dd><code>{{ group.timestamp_column }}</code></dd></div>{% endif %}
   {% if group.owner %}<div><dt>Owner</dt><dd>{{ group.owner }}</dd></div>{% endif %}

@@ -9,9 +9,20 @@
   <h1>{{ group.name }}</h1>
   {% if group.description %}<p class="lede">{{ group.description }}</p>{% endif %}
   <div class="badges">
+    {% if group.lifecycle.value != 'active' %}<span class="lifecycle lifecycle-{{ group.lifecycle.value }}">{{ group.lifecycle.value }}</span>{% endif %}
+    {% if group.definition_version > 1 %}<span class="badge badge-version">v{{ group.definition_version }}</span>{% endif %}
     {% if group.materialization %}<span class="badge">{{ group.materialization }}</span>{% endif %}
     {% for tag in group.tags %}<span class="tag">{{ tag }}</span>{% endfor %}
   </div>
+  {% if group.lifecycle.value == 'deprecated' and group.replacement %}
+  <p class="deprecation-notice">
+    <strong>Deprecated.</strong> Use <code>{{ group.replacement }}</code> instead.
+  </p>
+  {% elif group.lifecycle.value == 'deprecated' %}
+  <p class="deprecation-notice"><strong>Deprecated.</strong></p>
+  {% elif group.lifecycle.value == 'preview' %}
+  <p class="preview-notice"><strong>Preview.</strong> This feature table is not yet considered production-ready.</p>
+  {% endif %}
 </section>
 
 <section class="kv-grid">
@@ -42,18 +53,21 @@
         <th>Type</th>
         <th>Column type</th>
         <th>Null behavior</th>
+        <th>Status</th>
         <th>Used by</th>
       </tr>
     </thead>
     <tbody>
       {% for feature in group.features %}
-      <tr>
+      <tr class="{% if feature.lifecycle.value == 'deprecated' %}row-deprecated{% endif %}">
         <td><a href="{{ feature_url(group, feature, base_url=base_url) }}"><code>{{ feature.name }}</code></a>
+          {% if feature.definition_version > 1 %}<span class="badge badge-version">v{{ feature.definition_version }}</span>{% endif %}
           {% if feature.description %}<div class="muted small">{{ feature.description }}</div>{% endif %}
         </td>
         <td>{% if feature.feature_type %}<span class="pill pill-{{ feature.feature_type.value }}">{{ feature.feature_type.value }}</span>{% else %}—{% endif %}</td>
         <td>{% if feature.column_type %}<code>{{ feature.column_type }}</code>{% else %}—{% endif %}</td>
         <td>{% if feature.null_behavior %}{{ feature.null_behavior.value }}{% else %}—{% endif %}</td>
+        <td>{% if feature.lifecycle.value != 'active' %}<span class="lifecycle lifecycle-{{ feature.lifecycle.value }}">{{ feature.lifecycle.value }}</span>{% else %}—{% endif %}</td>
         <td>{% if feature.used_by %}{% for u in feature.used_by %}<code>{{ u }}</code>{% if not loop.last %}, {% endif %}{% endfor %}{% else %}—{% endif %}</td>
       </tr>
       {% endfor %}

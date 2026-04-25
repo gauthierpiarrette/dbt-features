@@ -20,9 +20,13 @@
   <h2 class="tag-heading"><span class="tag">{{ tag }}</span> <span class="muted">{{ groups|length }} group{{ '' if groups|length == 1 else 's' }}</span></h2>
   <div class="card-grid">
     {% for group in groups %}
-    <a class="card" href="{{ group_url(group, base_url=base_url) }}">
+    <a class="card {% if group.lifecycle.value == 'deprecated' %}card-deprecated{% endif %}" href="{{ group_url(group, base_url=base_url) }}">
       <div class="card-header">
-        <h3>{{ group.name }}</h3>
+        <h3>
+          {{ group.name }}
+          {% if group.lifecycle.value != 'active' %}<span class="lifecycle lifecycle-{{ group.lifecycle.value }}">{{ group.lifecycle.value }}</span>{% endif %}
+          {% if group.definition_version > 1 %}<span class="badge badge-version">v{{ group.definition_version }}</span>{% endif %}
+        </h3>
         <span class="muted">{{ group.features|length }} feature{{ '' if group.features|length == 1 else 's' }}</span>
       </div>
       {% if group.description %}<p class="card-desc">{{ group.description }}</p>{% endif %}

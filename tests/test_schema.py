@@ -9,6 +9,7 @@ from dbt_features.schema import (
     FeatureType,
     Freshness,
     FreshnessThreshold,
+    Lifecycle,
     NullBehavior,
 )
 
@@ -110,3 +111,43 @@ class TestFeatureMeta:
     def test_extra_fields_rejected(self) -> None:
         with pytest.raises(ValidationError):
             FeatureMeta.model_validate({"is_feature": True, "secret_field": True})
+
+
+class TestLifecycleAndVersion:
+    """Schema-only fields shipped in v0.1; behavior comes in v0.2.
+
+    The point of having these in the schema today is forward-compat:
+    users can declare them now without waiting for a breaking change.
+    """
+
+    def test_defaults(self) -> None:
+        f = FeatureMeta.model_validate({"is_feature": True})
+        assert f.definition_version == 1
+        assert f.lifecycle == Lifecycle.ACTIVE
+        assert f.replacement is None
+
+        t = FeatureTableMeta.model_validate({"is_feature_table": True})
+        assert t.definition_version == 1
+        assert t.lifecycle == Lifecycle.ACTIVE
+        assert t.replacement is None
+
+    def test_definition_version_must_be_positive(self) -> None:
+        with pytest.raises(ValidationError):
+            FeatureMeta.model_validate({"is_feature": True, "definition_version": 0})
+
+    def test_lifecycle_enum(self) -> None:
+        f = FeatureMeta.model_validate(
+            {"is_feature": True, "lifecycle": "deprecated", "replacement": "new_feature"}
+        )
+        assert f.lifecycle == Lifecycle.DEPRECATED
+        assert f.replacement == "new_feature"
+
+    def test_invalid_lifecycle_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            FeatureMeta.model_validate({"is_feature": True, "lifecycle": "retired"})
+
+    def test_table_level_preview(self) -> None:
+        t = FeatureTableMeta.model_validate(
+            {"is_feature_table": True, "lifecycle": "preview"}
+        )
+        assert t.lifecycle == Lifecycle.PREVIEW

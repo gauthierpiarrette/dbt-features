@@ -55,6 +55,19 @@ class FreshnessPeriod(str, Enum):
     DAY = "day"
 
 
+class Lifecycle(str, Enum):
+    """Where this feature/feature-table is in its lifecycle.
+
+    Documentation only in v0.1 — the catalog renders the state but does not
+    block usage. The schema accepts the field today so v0.2 can add
+    deprecation warnings without a breaking change.
+    """
+
+    ACTIVE = "active"
+    PREVIEW = "preview"
+    DEPRECATED = "deprecated"
+
+
 class FreshnessThreshold(BaseModel):
     """Same shape as dbt source freshness thresholds, on purpose.
 
@@ -93,6 +106,9 @@ class FeatureMeta(BaseModel):
     null_behavior: NullBehavior | None = None
     used_by: list[str] = Field(default_factory=list)
     description: str | None = None
+    definition_version: Annotated[int, Field(ge=1)] = 1
+    lifecycle: Lifecycle = Lifecycle.ACTIVE
+    replacement: str | None = None
 
     @field_validator("used_by")
     @classmethod
@@ -118,6 +134,9 @@ class FeatureTableMeta(BaseModel):
     owner: str | None = None
     tags: list[str] = Field(default_factory=list)
     description: str | None = None
+    definition_version: Annotated[int, Field(ge=1)] = 1
+    lifecycle: Lifecycle = Lifecycle.ACTIVE
+    replacement: str | None = None
 
     @field_validator("entity")
     @classmethod

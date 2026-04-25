@@ -11,10 +11,12 @@
 {% macro feature_catalog__validate() %}
     {% set known_table_keys = [
         'is_feature_table', 'version', 'entity', 'grain', 'timestamp_column',
-        'freshness', 'owner', 'tags', 'description'
+        'freshness', 'owner', 'tags', 'description',
+        'definition_version', 'lifecycle', 'replacement'
     ] %}
     {% set known_feature_keys = [
-        'is_feature', 'feature_type', 'null_behavior', 'used_by', 'description'
+        'is_feature', 'feature_type', 'null_behavior', 'used_by', 'description',
+        'definition_version', 'lifecycle', 'replacement'
     ] %}
     {% set known_feature_types = [
         'numeric', 'categorical', 'boolean', 'embedding', 'timestamp', 'text', 'identifier'
@@ -22,6 +24,7 @@
     {% set known_null_behaviors = [
         'zero', 'mean', 'propagate', 'error', 'ignore'
     ] %}
+    {% set known_lifecycles = ['active', 'preview', 'deprecated'] %}
     {% set known_periods = ['minute', 'hour', 'day'] %}
 
     {% set errors = [] %}
@@ -39,6 +42,12 @@
                         {% do errors.append(node.unique_id ~ ': unknown field `' ~ k ~ '` in feature_catalog') %}
                     {% endif %}
                 {% endfor %}
+                {% if fc.get('lifecycle') and fc.get('lifecycle') not in known_lifecycles %}
+                    {% do errors.append(node.unique_id ~ ': lifecycle must be one of ' ~ known_lifecycles|join(', ')) %}
+                {% endif %}
+                {% if fc.get('definition_version') is not none and fc.get('definition_version') < 1 %}
+                    {% do errors.append(node.unique_id ~ ': definition_version must be >= 1') %}
+                {% endif %}
                 {% if fc.get('freshness') %}
                     {% set fr = fc.get('freshness') %}
                     {% if not fr.get('warn_after') and not fr.get('error_after') %}
@@ -72,6 +81,12 @@
                         {% endif %}
                         {% if ffc.get('null_behavior') and ffc.get('null_behavior') not in known_null_behaviors %}
                             {% do errors.append(node.unique_id ~ '.' ~ col_name ~ ': null_behavior must be one of ' ~ known_null_behaviors|join(', ')) %}
+                        {% endif %}
+                        {% if ffc.get('lifecycle') and ffc.get('lifecycle') not in known_lifecycles %}
+                            {% do errors.append(node.unique_id ~ '.' ~ col_name ~ ': lifecycle must be one of ' ~ known_lifecycles|join(', ')) %}
+                        {% endif %}
+                        {% if ffc.get('definition_version') is not none and ffc.get('definition_version') < 1 %}
+                            {% do errors.append(node.unique_id ~ '.' ~ col_name ~ ': definition_version must be >= 1') %}
                         {% endif %}
                     {% endif %}
                 {% endfor %}

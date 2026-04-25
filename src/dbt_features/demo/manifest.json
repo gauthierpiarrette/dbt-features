@@ -100,7 +100,23 @@
               "is_feature": true,
               "feature_type": "numeric",
               "null_behavior": "zero",
+              "definition_version": 2,
               "used_by": ["churn_model_v2", "ltv_model_v3"]
+            }
+          }
+        },
+        "orders_count_legacy": {
+          "name": "orders_count_legacy",
+          "description": "Legacy lifetime count, kept for the now-retired ranking_model_v3",
+          "data_type": "integer",
+          "tags": [],
+          "meta": {
+            "feature_catalog": {
+              "is_feature": true,
+              "feature_type": "numeric",
+              "null_behavior": "zero",
+              "lifecycle": "deprecated",
+              "replacement": "orders_count_30d"
             }
           }
         },
@@ -164,7 +180,8 @@
           "entity": ["customer_id"],
           "grain": ["customer_id"],
           "owner": "growth-team@example.com",
-          "tags": ["customer", "lifetime"]
+          "tags": ["customer", "lifetime"],
+          "lifecycle": "preview"
         }
       },
       "depends_on": {"nodes": ["model.demo_features.customer_features_daily"]},
