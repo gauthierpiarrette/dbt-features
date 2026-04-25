@@ -37,9 +37,9 @@
         </button>
       </nav>
     </div>
-    <div class="search-wrap">
-      <input id="search-input" type="search" placeholder="Search features and groups…" autocomplete="off">
-      <ul id="search-results" hidden></ul>
+    <div class="search-wrap" role="search">
+      <input id="search-input" type="search" placeholder="Search features and groups… (press /)" autocomplete="off" aria-label="Search features and groups" aria-controls="search-results" aria-expanded="false">
+      <ul id="search-results" role="listbox" aria-label="Search results" hidden></ul>
     </div>
   </header>
   <main class="container">
@@ -53,6 +53,10 @@
   <script>window.SEARCH_BASE_URL = "{{ base_url }}"; window.SEARCH_INDEX_URL = "{{ base_url }}/static/search-index.json";</script>
   <script src="{{ base_url }}/static/search.js" defer></script>
   <script src="{{ base_url }}/static/theme.js" defer></script>
+  <script src="{{ base_url }}/static/sort.js" defer></script>
+  <script>
+  document.addEventListener("click",function(e){var b=e.target.closest(".copy-btn");if(!b)return;var t=b.getAttribute("data-copy");if(!t)return;navigator.clipboard.writeText(t).then(function(){b.setAttribute("data-tooltip","Copied!");b.classList.add("copied");setTimeout(function(){b.classList.remove("copied");b.removeAttribute("data-tooltip")},1200)})});
+  </script>
   {% block scripts %}{% endblock %}
 </body>
 </html>
