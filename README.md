@@ -172,7 +172,8 @@ Install the extra for your warehouse:
 pip install 'dbt-features[duckdb]'      # local dev / dbt-duckdb projects
 pip install 'dbt-features[postgres]'    # Postgres
 pip install 'dbt-features[redshift]'    # Redshift (password or IAM auth)
-# Snowflake / BigQuery — coming next
+pip install 'dbt-features[snowflake]'   # Snowflake (password, key-pair, SSO/OAuth)
+pip install 'dbt-features[bigquery]'    # BigQuery (ADC, service-account, inline JSON)
 ```
 
 Then:

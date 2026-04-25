@@ -57,8 +57,16 @@ def get_adapter(profile: dict[str, object]) -> WarehouseAdapter:
         from dbt_features.enrichment.adapters.redshift import RedshiftAdapter
 
         return RedshiftAdapter(profile)
+    if db_type == "snowflake":
+        from dbt_features.enrichment.adapters.snowflake import SnowflakeAdapter
+
+        return SnowflakeAdapter(profile)
+    if db_type == "bigquery":
+        from dbt_features.enrichment.adapters.bigquery import BigQueryAdapter
+
+        return BigQueryAdapter(profile)
 
     raise EnrichmentError(
         f"Unsupported warehouse type: {db_type!r}. "
-        "Supported: duckdb, postgres, redshift. (snowflake / bigquery coming next.)"
+        "Supported: duckdb, postgres, redshift, snowflake, bigquery."
     )

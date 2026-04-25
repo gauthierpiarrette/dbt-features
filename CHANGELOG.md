@@ -23,9 +23,12 @@ this project adheres to [Semantic Versioning](https://semver.org/).
   `feature_catalog__validate` run-operation for compile-time metadata
   validation.
 
+### Warehouse adapters shipped in v0.1
+DuckDB, Postgres, Redshift (password + IAM auth), Snowflake (password,
+key-pair, external-browser SSO, OAuth pass-through), BigQuery (ADC,
+service-account keyfile, inline service-account JSON).
+
 ### Not yet implemented
-- Snowflake and BigQuery enrichment adapters — coming next. The
-  warehouse-enrichment subsystem ships today with DuckDB, Postgres, and
-  Redshift (including IAM auth) adapters.
 - Auto-derivation of `used_by` from dbt lineage / model registries.
 - Multi-project federation.
+- Live (non-cached) freshness — currently cached with a configurable TTL.
