@@ -131,6 +131,22 @@ def test_version_flag() -> None:
     assert "dbt-features" in result.output
 
 
+def test_build_demo_flag(tmp_path: Path) -> None:
+    """`build --demo` should produce a complete demo site without needing
+    a real dbt project. Used by the GitHub Pages deploy workflow."""
+
+    runner = CliRunner()
+    with runner.isolated_filesystem(temp_dir=tmp_path):
+        result = runner.invoke(main, ["build", "--demo", "--output", "demo-site"])
+        assert result.exit_code == 0, result.output
+        site = Path("demo-site")
+        assert (site / "index.html").exists()
+        assert (site / "lineage.html").exists()
+        # Demo enrichment must propagate to the rendered output.
+        index = (site / "index.html").read_text()
+        assert "freshness-dot" in index
+
+
 def test_demo_synthesizes_enrichment() -> None:
     """The demo command must produce realistic-looking warehouse stats
     so screenshots show the freshness UI."""

@@ -2,21 +2,28 @@
 
 A **feature catalog** for ML teams whose features live as dbt models.
 
-Get the discovery UX of Tecton or Chalk's feature-catalog page — without
-adopting the platform — by layering ML-feature-aware metadata on top of your
-existing dbt project.
+[**Live demo →**](https://gauthierpiarrette.github.io/dbt-features/) ·
+[Install](#install) ·
+[Schema](#metadata-schema) ·
+[Warehouse enrichment](#warehouse-enrichment-optional) ·
+[Spec](./specs.md)
 
 > Not a data catalog. A feature catalog. The distinction is load-bearing.
 
-## What it does
+![Feature group page with freshness, row count, null %, and per-feature cardinality](docs/screenshots/02-feature-group.png)
 
-- Reads your dbt project's `manifest.json` (and optionally `catalog.json`).
-- Picks up models you've marked with `meta.feature_catalog.is_feature_table: true`.
-- Generates a static HTML site with three views: feature-group index, feature-group
-  detail, and individual feature detail — plus client-side search and a
-  feature-table-only lineage graph.
-- Validates your `feature_catalog` metadata against a versioned, opinionated
-  schema. Bad metadata = clear error message.
+## What you get
+
+- **Feature-aware metadata schema.** Entity, grain, timestamp column,
+  freshness SLA, owner, lifecycle, version, ML consumers — first-class
+  fields, validated by Pydantic.
+- **Static HTML site** with feature-group index, feature-group detail,
+  individual feature pages, client-side search, and a feature-table-only
+  lineage graph. Hostable on GitHub Pages, S3, Netlify, anywhere.
+- **Optional warehouse enrichment** — pass `--connection <profile>` and the
+  catalog renders **actual freshness** (green/yellow/red), row counts,
+  null %, and per-feature cardinality. DuckDB, Postgres, Redshift,
+  Snowflake, BigQuery — read your existing `~/.dbt/profiles.yml`.
 
 It is intentionally:
 
@@ -27,14 +34,36 @@ It is intentionally:
 
 See [`specs.md`](./specs.md) for the full motivation.
 
+## Why not just dbt-docs?
+
+|                                            | dbt-docs                | dbt-features                                      |
+|--------------------------------------------|-------------------------|---------------------------------------------------|
+| Knows what a feature is (entity, grain, PIT) | No                    | Yes                                               |
+| Lineage scope                              | Full graph (noisy)      | Feature-tables only (focused)                     |
+| Freshness                                  | dbt source freshness    | Per-feature-table SLA + actual age, with stats    |
+| Owner / ML consumers / lifecycle           | Generic `meta` blob     | First-class fields, rendered                      |
+| Search                                     | Yes (basic)             | Yes (basic)                                       |
+| Setup                                      | `dbt docs generate`     | `dbt parse` + `feature_catalog:` blocks + build   |
+| Hosting                                    | Static                  | Static                                            |
+
+dbt-docs is great. **It's just not built for ML feature workflows.** This
+tool is the answer to "we use dbt for our feature pipelines and dbt-docs
+isn't enough."
+
 ## Install
 
 ```bash
-pip install dbt-features
+pip install dbt-features                      # core: static catalog from manifest.json
+pip install 'dbt-features[duckdb]'            # + warehouse enrichment for dbt-duckdb
+pip install 'dbt-features[postgres]'          # + Postgres
+pip install 'dbt-features[redshift]'          # + Redshift (password or IAM)
+pip install 'dbt-features[snowflake]'         # + Snowflake (password, key-pair, SSO)
+pip install 'dbt-features[bigquery]'          # + BigQuery (ADC, service-account, inline JSON)
 ```
 
-Requires Python 3.10+. The tool reads dbt artifacts as JSON — it does not
-import `dbt-core`, so it won't fight your dbt version.
+Requires Python 3.10+. The base install does not depend on `dbt-core` —
+it reads dbt artifacts as JSON, so it won't fight your dbt version. The
+optional warehouse extras bring in only that warehouse's native driver.
 
 ## See it in 10 seconds
 
@@ -45,6 +74,8 @@ dbt-features demo
 Builds a catalog from bundled sample data, serves it on a free port, and
 opens your browser. No dbt project required, nothing written to your
 codebase — output goes to a temp directory that's cleaned up on exit.
+
+![Index page — feature groups grouped by tag, with status dots](docs/screenshots/01-index.png)
 
 For headless use:
 
@@ -146,6 +177,22 @@ models:
 
 The schema is validated by Pydantic. Unknown fields are rejected — typos
 become errors instead of silently dropped data.
+
+### Individual feature page
+
+Every feature column gets its own page with semantic type, null behavior,
+warehouse type, declared ML consumers, and (when enriched) actual null
+rate and cardinality.
+
+![Feature page — null rate, distinct values, ML consumers, lifecycle](docs/screenshots/03-feature.png)
+
+### Lineage view
+
+A feature-table-only lineage graph (Mermaid, bundled locally — works
+offline). The full dbt graph is out of scope here: it's noisy and
+already lives in dbt-docs.
+
+![Lineage page — feature-table-only graph](docs/screenshots/04-lineage.png)
 
 ## What's deliberately out of scope (v0.1)
 

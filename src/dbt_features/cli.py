@@ -103,6 +103,14 @@ _CATALOG_OPT = click.option(
     default=False,
     help="Skip the enrichment cache entirely (always queries the warehouse).",
 )
+@click.option(
+    "--demo",
+    "use_demo_data",
+    is_flag=True,
+    default=False,
+    help="Build from the bundled sample data with synthesized enrichment. "
+    "Useful for hosting a permanent demo on GitHub Pages or generating screenshots.",
+)
 def build(
     project_dir: Path,
     manifest_path: Path | None,
@@ -114,32 +122,47 @@ def build(
     profiles_dir: Path | None,
     cache_ttl: int,
     no_cache: bool,
+    use_demo_data: bool,
 ) -> None:
     """Build a static feature catalog site from your dbt artifacts."""
 
-    try:
-        catalog = parse_project(project_dir, manifest_path=manifest_path, catalog_path=catalog_path)
-    except FileNotFoundError as e:
-        raise click.ClickException(str(e)) from e
-    except SchemaError as e:
-        msg = str(e)
-        if e.node_id:
-            msg = f"[{e.node_id}] {msg}"
-        raise click.ClickException(msg) from e
+    if use_demo_data:
+        # Bundled-demo path: ignore --project-dir/--manifest, use the
+        # vendored manifest, and synthesize enrichment so the rendered
+        # site shows freshness/null%/cardinality without a warehouse.
+        try:
+            catalog = parse_project(project_dir, manifest_path=demo_manifest_path())
+        except FileNotFoundError as e:  # pragma: no cover - packaging accident
+            raise click.ClickException(str(e)) from e
+    else:
+        try:
+            catalog = parse_project(
+                project_dir, manifest_path=manifest_path, catalog_path=catalog_path
+            )
+        except FileNotFoundError as e:
+            raise click.ClickException(str(e)) from e
+        except SchemaError as e:
+            msg = str(e)
+            if e.node_id:
+                msg = f"[{e.node_id}] {msg}"
+            raise click.ClickException(msg) from e
 
     if clean and output.exists():
         _safe_clear(output)
     output.mkdir(parents=True, exist_ok=True)
 
-    enrichment = _resolve_enrichment(
-        catalog,
-        output=output,
-        profile_name=connection_profile,
-        target=connection_target,
-        profiles_dir=profiles_dir,
-        cache_ttl=cache_ttl,
-        use_cache=not no_cache,
-    )
+    if use_demo_data:
+        enrichment = _synthesize_demo_enrichment(catalog)  # type: ignore[assignment]
+    else:
+        enrichment = _resolve_enrichment(
+            catalog,
+            output=output,
+            profile_name=connection_profile,
+            target=connection_target,
+            profiles_dir=profiles_dir,
+            cache_ttl=cache_ttl,
+            use_cache=not no_cache,
+        )
 
     render_catalog(catalog, output, enrichment=enrichment)
 

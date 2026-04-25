@@ -1,0 +1,50 @@
+name: deploy-demo
+
+# Builds the bundled demo on every push to main and publishes the
+# resulting static site to GitHub Pages. The result is the permanent
+# live-demo URL linked from the README.
+#
+# One-time repo setup: enable Pages in Settings → Pages → Source: GitHub Actions.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Don't queue concurrent deploys; cancel an in-flight build if a newer
+# commit lands.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install
+        run: pip install -e .
+      - name: Build demo site
+        run: dbt-features build --demo --output ./demo-site
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./demo-site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
