@@ -120,6 +120,24 @@ def test_static_assets_copied(built_catalog: Path) -> None:
     assert (built_catalog / "static" / "style.css").exists()
     assert (built_catalog / "static" / "search.js").exists()
     assert (built_catalog / "static" / "theme.js").exists()
+    assert (built_catalog / "static" / "favicon.svg").exists()
+
+
+def test_favicon_linked_in_pages(built_catalog: Path) -> None:
+    """Every page must reference the favicon. The 404 was small but
+    every browser fetches it — and a missing icon makes bookmarks look
+    broken."""
+
+    pages = [
+        built_catalog / "index.html",
+        built_catalog / "lineage.html",
+        built_catalog / "groups" / "customer-features-daily" / "index.html",
+        built_catalog / "groups" / "customer-features-daily" / "features" / "orders-count-7d.html",
+    ]
+    for p in pages:
+        content = p.read_text()
+        assert 'rel="icon"' in content, f"favicon missing on {p}"
+        assert "favicon.svg" in content, f"favicon path missing on {p}"
 
 
 def test_theme_toggle_present_on_pages(built_catalog: Path) -> None:
