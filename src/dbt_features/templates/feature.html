@@ -1,20 +1,36 @@
 {% extends "base.html" %}
 {% block content %}
-<nav class="breadcrumbs">
-  <a href="{{ base_url }}/index.html">{{ catalog.project_name }}</a> ›
-  <a href="{{ group_url(group, base_url=base_url) }}">{{ group.name }}</a> ›
-  <span>{{ feature.name }}</span>
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+  <a href="{{ base_url }}/index.html">{{ catalog.project_name }}</a>
+  <span class="sep" aria-hidden="true">›</span>
+  <a href="{{ group_url(group, base_url=base_url) }}">{{ group.name }}</a>
+  <span class="sep" aria-hidden="true">›</span>
+  <span aria-current="page">{{ feature.name }}</span>
 </nav>
 
-<section class="page-head">
-  <h1><code>{{ feature.name }}</code> <button class="copy-btn" type="button" data-copy="{{ group.name }}.{{ feature.name }}" aria-label="Copy feature name"><svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25z"/><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25z"/></svg></button></h1>
-  {% if feature.description %}<p class="lede">{{ feature.description }}</p>{% endif %}
-  <div class="badges">
-    {% if feature.lifecycle.value != 'active' %}<span class="lifecycle lifecycle-{{ feature.lifecycle.value }}">{{ feature.lifecycle.value }}</span>{% endif %}
-    {% if feature.definition_version > 1 %}<span class="badge badge-version">v{{ feature.definition_version }}</span>{% endif %}
-    {% if feature.feature_type %}<span class="pill pill-{{ feature.feature_type.value }}">{{ feature.feature_type.value }}</span>{% endif %}
-    {% for tag in feature.tags %}<span class="tag">{{ tag }}</span>{% endfor %}
+{% set primary_entity = group.entity_columns[0] if group.entity_columns else None %}
+{% set entity_color = entity_palette.get(primary_entity) if primary_entity else None %}
+<section class="page-head" {% if entity_color %}style="--entity-accent: {{ entity_color }};"{% endif %}>
+  <div class="page-title-row">
+    <h1>
+      {% if entity_color %}<span class="entity-dot entity-dot-lg" aria-hidden="true"></span>{% endif %}
+      <code class="title-code">{{ feature.name }}</code>
+      <button class="copy-btn" type="button" data-copy="{{ group.name }}.{{ feature.name }}" aria-label="Copy feature name"><svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25z"/><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25z"/></svg></button>
+    </h1>
+    <div class="badges">
+      {% if feature.lifecycle.value != 'active' %}<span class="lifecycle lifecycle-{{ feature.lifecycle.value }}">{{ feature.lifecycle.value }}</span>{% endif %}
+      {% if feature.definition_version > 1 %}<span class="badge badge-version">v{{ feature.definition_version }}</span>{% endif %}
+      {% if feature.feature_type %}<span class="pill pill-{{ feature.feature_type.value }}">{{ feature.feature_type.value }}</span>{% endif %}
+      {% for tag in feature.tags %}<span class="tag">{{ tag }}</span>{% endfor %}
+    </div>
   </div>
+  {% if feature.description %}<p class="lede">{{ feature.description }}</p>{% endif %}
+
+  <div class="fqn-row">
+    <code class="fqn">{{ group.fully_qualified_name }}.{{ feature.name }}</code>
+    <button class="copy-btn copy-btn-prominent" type="button" data-copy="{{ group.fully_qualified_name }}.{{ feature.name }}" aria-label="Copy fully-qualified column"><svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25z"/><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25z"/></svg></button>
+  </div>
+
   {% if feature.lifecycle.value == 'deprecated' and feature.replacement %}
   <p class="deprecation-notice">
     <strong>Deprecated.</strong> Use <code>{{ feature.replacement }}</code> instead.
@@ -47,39 +63,59 @@
 </section>
 {% endif %}
 
-<section class="kv-grid">
-  <div><dt>Feature group</dt><dd><a href="{{ group_url(group, base_url=base_url) }}"><code>{{ group.name }}</code></a></dd></div>
-  {% if feature.column_type %}<div><dt>Warehouse type</dt><dd><code>{{ feature.column_type }}</code></dd></div>{% endif %}
-  {% if feature.feature_type %}<div><dt>Semantic type</dt><dd>{{ feature.feature_type.value }}</dd></div>{% endif %}
-  {% if feature.null_behavior %}<div><dt>Null behavior</dt><dd>{{ feature.null_behavior.value }}</dd></div>{% endif %}
-  {% if column_stats and snapshot and snapshot.row_count is not none %}
-  <div><dt>Null rate</dt><dd>{{ humanize_percent(column_stats.null_count, snapshot.row_count) }}{% if column_stats.null_count is not none %} <span class="muted">({{ column_stats.null_count|humanize_count }} of {{ snapshot.row_count|humanize_count }})</span>{% endif %}</dd></div>
-  {% endif %}
-  {% if column_stats and column_stats.distinct_count is not none %}
-  <div><dt>Distinct values</dt><dd>{{ column_stats.distinct_count|humanize_count }}</dd></div>
-  {% endif %}
-  {% if feature.definition_version > 1 %}<div><dt>Definition version</dt><dd>v{{ feature.definition_version }}</dd></div>{% endif %}
-  <div><dt>Lifecycle</dt><dd>{{ feature.lifecycle.value }}{% if feature.replacement %} → <code>{{ feature.replacement }}</code>{% endif %}</dd></div>
-  {% if group.entity_columns %}<div><dt>Entity grain</dt><dd>{% for c in group.entity_columns %}<code>{{ c }}</code>{% if not loop.last %}, {% endif %}{% endfor %}</dd></div>{% endif %}
-  {% if group.timestamp_column %}<div><dt>Time anchor</dt><dd><code>{{ group.timestamp_column }}</code></dd></div>{% endif %}
-  {% if group.owner %}<div><dt>Owner</dt><dd>{{ group.owner }}</dd></div>{% endif %}
+<section class="info-grid">
+  <div class="info-block">
+    <h3 class="info-block-title">Trust</h3>
+    <dl class="info-pairs">
+      {% if group.owner %}<div><dt>Owner</dt><dd>{{ group.owner }}</dd></div>{% endif %}
+      <div><dt>Lifecycle</dt><dd>{{ feature.lifecycle.value }}{% if feature.replacement %} → <code>{{ feature.replacement }}</code>{% endif %}</dd></div>
+      {% if feature.definition_version > 1 %}<div><dt>Definition version</dt><dd>v{{ feature.definition_version }}</dd></div>{% endif %}
+    </dl>
+  </div>
+  <div class="info-block">
+    <h3 class="info-block-title">Join keys</h3>
+    <dl class="info-pairs">
+      {% if group.entity_columns %}<div><dt>Entity</dt><dd>{% for c in group.entity_columns %}<code>{{ c }}</code>{% if not loop.last %}, {% endif %}{% endfor %}</dd></div>{% endif %}
+      {% if group.timestamp_column %}<div><dt>Time anchor</dt><dd><code>{{ group.timestamp_column }}</code></dd></div>{% endif %}
+      <div><dt>Feature group</dt><dd><a href="{{ group_url(group, base_url=base_url) }}"><code>{{ group.name }}</code></a></dd></div>
+    </dl>
+  </div>
+  <div class="info-block">
+    <h3 class="info-block-title">Shape</h3>
+    <dl class="info-pairs">
+      {% if feature.column_type %}<div><dt>Warehouse type</dt><dd><code>{{ feature.column_type }}</code></dd></div>{% endif %}
+      {% if feature.feature_type %}<div><dt>Semantic type</dt><dd>{{ feature.feature_type.value }}</dd></div>{% endif %}
+      {% if feature.null_behavior %}<div><dt>Null behavior</dt><dd>{{ feature.null_behavior.value }}</dd></div>{% endif %}
+      {% if column_stats and snapshot and snapshot.row_count is not none %}
+      <div><dt>Null rate</dt><dd>{{ humanize_percent(column_stats.null_count, snapshot.row_count) }}{% if column_stats.null_count is not none %} <span class="muted">({{ column_stats.null_count|humanize_count }} of {{ snapshot.row_count|humanize_count }})</span>{% endif %}</dd></div>
+      {% endif %}
+      {% if column_stats and column_stats.distinct_count is not none %}
+      <div><dt>Distinct values</dt><dd>{{ column_stats.distinct_count|humanize_count }}</dd></div>
+      {% endif %}
+    </dl>
+  </div>
+</section>
+
+<section class="usage" aria-label="How to use">
+  <h2 class="section-h2">Use this feature</h2>
+  <pre class="snippet"><button class="copy-btn copy-btn-snippet" type="button" data-copy="{{ sql_select_snippet(group, [feature]) }}" aria-label="Copy SQL"><svg viewBox="0 0 16 16" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25z"/><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25z"/></svg></button><code>{{ sql_select_snippet(group, [feature]) }}</code></pre>
 </section>
 
 <section>
-  <h2>Declared ML consumers</h2>
+  <h2 class="section-h2">Declared ML consumers</h2>
   {% if feature.used_by %}
-  <ul class="lineage-list">
-    {% for c in feature.used_by %}<li><code>{{ c }}</code></li>{% endfor %}
+  <ul class="consumer-grid">
+    {% for c in feature.used_by %}<li><a class="consumer-card" href="{{ model_url(c, base_url=base_url) }}"><code>{{ c }}</code><span class="muted small">model →</span></a></li>{% endfor %}
   </ul>
-  <p class="muted small">Declared manually via <code>meta.feature_catalog.used_by</code> on this column. dbt-internal consumers are listed under "Downstream dbt models" on the feature group page.</p>
+  <p class="muted small">Declared via <code>meta.feature_catalog.used_by</code> on this column. dbt-internal consumers are listed under "Downstream dbt models" on the feature group page.</p>
   {% else %}<p class="muted">No declared consumers.</p>{% endif %}
 </section>
 
-{% if related_features %}
+{% if related_by_consumer %}
 <section>
-  <h2>Related features</h2>
+  <h2 class="section-h2">Other features used by the same model{{ '' if (feature.used_by|length) == 1 else 's' }}</h2>
   <ul class="related-list">
-    {% for rf in related_features %}
+    {% for rf in related_by_consumer %}
     <li>
       <a href="{{ feature_url(group, rf, base_url=base_url) }}"><code>{{ rf.name }}</code></a>
       {% if rf.feature_type %}<span class="pill pill-{{ rf.feature_type.value }}">{{ rf.feature_type.value }}</span>{% endif %}
@@ -87,7 +123,21 @@
     </li>
     {% endfor %}
   </ul>
-  <p class="muted small">Features in the same group that share ML consumers or semantic type.</p>
+</section>
+{% endif %}
+
+{% if related_by_type %}
+<section>
+  <h2 class="section-h2">Other {% if feature.feature_type %}{{ feature.feature_type.value }}{% endif %} features in <code>{{ group.name }}</code></h2>
+  <ul class="related-list">
+    {% for rf in related_by_type %}
+    <li>
+      <a href="{{ feature_url(group, rf, base_url=base_url) }}"><code>{{ rf.name }}</code></a>
+      {% if rf.feature_type %}<span class="pill pill-{{ rf.feature_type.value }}">{{ rf.feature_type.value }}</span>{% endif %}
+      {% if rf.description %}<span class="muted small">{{ rf.description }}</span>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
 </section>
 {% endif %}
 {% endblock %}
