@@ -140,11 +140,12 @@ class Catalog:
         return None
 
     def feature_groups_by_tag(self) -> dict[str, list[FeatureGroup]]:
-        """Group feature groups by tag for the index page.
+        """Group feature groups by tag.
 
         Groups with no tags fall under ``"untagged"``. A group with multiple
-        tags appears under each one — that matches what users want when
-        scanning the index by topic.
+        tags appears under each one. Kept for backward compatibility and
+        for callers (e.g. exporters) that want a tag-faceted view; the
+        index page itself groups by entity now to avoid card duplication.
         """
 
         out: dict[str, list[FeatureGroup]] = {}
@@ -154,4 +155,83 @@ class Catalog:
                 out.setdefault(tag, []).append(g)
         for groups in out.values():
             groups.sort(key=lambda g: g.name)
+        return dict(sorted(out.items()))
+
+    def feature_groups_by_entity(self) -> dict[str, list[FeatureGroup]]:
+        """Group feature groups by their primary entity, no duplication.
+
+        Entity is the join key — the question every feature consumer asks
+        first ("what features can I join to a customer?"). We use the
+        first declared entity column as the section. Multi-entity groups
+        land in ``"Cross-entity"`` so they're discoverable but not
+        duplicated. Groups without an entity fall under ``"Other"``.
+        """
+
+        out: dict[str, list[FeatureGroup]] = {}
+        for g in self.feature_groups:
+            entities = g.entity_columns
+            if not entities:
+                key = "Other"
+            elif len(entities) > 1:
+                key = "Cross-entity"
+            else:
+                key = entities[0]
+            out.setdefault(key, []).append(g)
+        for groups in out.values():
+            groups.sort(key=lambda g: g.name)
+        # Surface "Cross-entity" and "Other" last; everything else alpha.
+        def _order(k: str) -> tuple[int, str]:
+            if k == "Cross-entity":
+                return (1, k)
+            if k == "Other":
+                return (2, k)
+            return (0, k)
+
+        return {k: out[k] for k in sorted(out.keys(), key=_order)}
+
+    @property
+    def all_entities(self) -> list[str]:
+        seen: dict[str, None] = {}
+        for g in self.feature_groups:
+            for e in g.entity_columns:
+                seen[e] = None
+        return sorted(seen)
+
+    @property
+    def all_owners(self) -> list[str]:
+        seen: dict[str, None] = {}
+        for g in self.feature_groups:
+            if g.owner:
+                seen[g.owner] = None
+        return sorted(seen)
+
+    @property
+    def all_models(self) -> list[str]:
+        """Distinct model names declared via column-level ``used_by``.
+
+        These are typically ML/analytics consumers that don't appear in
+        the dbt graph. Sorted, deduped.
+        """
+
+        seen: dict[str, None] = {}
+        for g in self.feature_groups:
+            for f in g.features:
+                for m in f.used_by:
+                    seen[m] = None
+        return sorted(seen)
+
+    def features_by_model(self) -> dict[str, list[tuple[FeatureGroup, Feature]]]:
+        """Inverted index: model name -> list of (group, feature) pairs.
+
+        Powers the ``/models/<name>/`` pages — the consumer-centric view
+        that was missing from v0.2.
+        """
+
+        out: dict[str, list[tuple[FeatureGroup, Feature]]] = {}
+        for g in self.feature_groups:
+            for f in g.features:
+                for m in f.used_by:
+                    out.setdefault(m, []).append((g, f))
+        for entries in out.values():
+            entries.sort(key=lambda gf: (gf[0].name, gf[1].name))
         return dict(sorted(out.items()))
