@@ -10,7 +10,7 @@
 [![coverage](https://img.shields.io/badge/coverage-88%25-brightgreen.svg)](https://github.com/gauthierpiarrette/dbt-features)
 [![license](https://img.shields.io/badge/license-Apache%202.0-green.svg)](./LICENSE)
 
-A **feature catalog** for ML teams whose features live as dbt models.
+**Feature catalog for dbt projects, built for ML teams.**
 
 [**Live demo →**](https://gauthierpiarrette.github.io/dbt-features/) ·
 [Install](#install) ·

@@ -6,6 +6,51 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0] - UI redesign, ML model pages, faster search
+
+### Added
+- **ML model pages.** Each consumer in `used_by` now gets its own page
+  listing every feature group and feature it consumes — closes the
+  feature-to-model loop in both directions.
+- **Cmd-K / `/` search modal** with match highlighting, no-results
+  feedback, and a `kind:` filter (`kind:feature`, `kind:group`,
+  `kind:model`) for narrowing by entity type.
+- **Faceted filter chips** on the homepage and feature-group pages
+  (entity, type, owner, lifecycle, freshness), URL-synced so filtered
+  views are linkable.
+- **Sortable columns** on the feature table.
+- **Related features** sections on feature-group and feature-detail
+  pages (related-by-consumer and related-by-type).
+- **Summary stats bar** and per-entity type-distribution mini-bars on
+  the index.
+- **Copy-to-clipboard buttons** on SQL, dbt-ref, and feature-name
+  snippets.
+- **Owner and model indexes** on the catalog object.
+- **Deep-link anchors** on feature rows.
+- **A11y**: ARIA attributes on interactive controls, print stylesheet.
+
+### Changed
+- **Homepage** rewritten around entity sections with faceted filtering
+  and URL-synced state.
+- **Feature-group page** rewritten with an info grid, SQL / dbt-ref
+  snippet tabs, and a dedicated lineage section.
+- **Feature-detail page** rewritten with an info grid and
+  related-features sections.
+- **Lineage page** redesigned: Mermaid entity clusters, search-to-focus,
+  theme-aware re-render on toggle.
+- **Global header** redesigned with a search trigger and a two-state
+  theme toggle; Safari-safe icons throughout.
+- **Brand logo** is now the favicon.
+- **CSS rewrite** with design tokens, type pills, entity dots, type
+  bars, and cleaner section spacing.
+
+### Fixed
+- Broken feature-page URLs in some lineage edges.
+- Stray HTML in the rendered feature table.
+- Overly aggressive `ARRAY` -> `embedding` inference for non-vector
+  array columns.
+- Stale docstrings and a misleading test name.
+
 ## [0.2.0] - Auto-include feature columns
 
 ### Changed (breaking)
