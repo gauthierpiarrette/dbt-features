@@ -1,0 +1,169 @@
+{
+  "metadata": {
+    "project_name": "jaffle_features",
+    "dbt_schema_version": "https://schemas.getdbt.com/dbt/manifest/v12.json",
+    "dbt_version": "1.8.0"
+  },
+  "nodes": {
+    "model.jaffle_features.stg_orders": {
+      "name": "stg_orders",
+      "unique_id": "model.jaffle_features.stg_orders",
+      "resource_type": "model",
+      "package_name": "jaffle_features",
+      "path": "staging/stg_orders.sql",
+      "original_file_path": "models/staging/stg_orders.sql",
+      "description": "Staging model for raw orders",
+      "schema": "analytics",
+      "database": "warehouse",
+      "config": {"materialized": "view", "meta": {}},
+      "meta": {},
+      "depends_on": {"nodes": ["source.jaffle_features.raw.orders"]},
+      "columns": {}
+    },
+    "model.jaffle_features.customer_features_daily": {
+      "name": "customer_features_daily",
+      "unique_id": "model.jaffle_features.customer_features_daily",
+      "resource_type": "model",
+      "package_name": "jaffle_features",
+      "path": "features/customer_features_daily.sql",
+      "original_file_path": "models/features/customer_features_daily.sql",
+      "description": "Daily booking-related features per customer",
+      "schema": "analytics",
+      "database": "warehouse",
+      "config": {"materialized": "table", "meta": {}},
+      "meta": {
+        "feature_catalog": {
+          "is_feature_table": true,
+          "entity": "customer_id",
+          "grain": ["feature_date", "customer_id"],
+          "timestamp_column": "feature_date",
+          "freshness": {
+            "warn_after": {"count": 36, "period": "hour"},
+            "error_after": {"count": 48, "period": "hour"}
+          },
+          "owner": "growth-team@jaffle.com",
+          "tags": ["customer", "daily"]
+        }
+      },
+      "depends_on": {"nodes": ["model.jaffle_features.stg_orders"]},
+      "columns": {
+        "feature_date": {
+          "name": "feature_date",
+          "description": "Date the features are computed for",
+          "data_type": "date",
+          "tags": [],
+          "meta": {}
+        },
+        "customer_id": {
+          "name": "customer_id",
+          "description": "Customer identifier",
+          "data_type": "varchar",
+          "tags": [],
+          "meta": {
+            "feature_catalog": {
+              "is_feature": true,
+              "feature_type": "identifier"
+            }
+          }
+        },
+        "orders_count_7d": {
+          "name": "orders_count_7d",
+          "description": "Number of orders in the trailing 7 days",
+          "data_type": "integer",
+          "tags": [],
+          "meta": {
+            "feature_catalog": {
+              "is_feature": true,
+              "feature_type": "numeric",
+              "null_behavior": "zero",
+              "used_by": ["churn_model_v2", "ltv_model_v3"]
+            }
+          }
+        },
+        "is_repeat_customer": {
+          "name": "is_repeat_customer",
+          "description": "Has the customer ordered more than once",
+          "data_type": "boolean",
+          "tags": [],
+          "meta": {
+            "feature_catalog": {
+              "is_feature": true,
+              "feature_type": "boolean",
+              "used_by": ["churn_model_v2"]
+            }
+          }
+        }
+      }
+    },
+    "model.jaffle_features.customer_features_lifetime": {
+      "name": "customer_features_lifetime",
+      "unique_id": "model.jaffle_features.customer_features_lifetime",
+      "resource_type": "model",
+      "package_name": "jaffle_features",
+      "path": "features/customer_features_lifetime.sql",
+      "original_file_path": "models/features/customer_features_lifetime.sql",
+      "description": "Lifetime features per customer (slowly changing)",
+      "schema": "analytics",
+      "database": "warehouse",
+      "config": {"materialized": "table", "meta": {}},
+      "meta": {
+        "feature_catalog": {
+          "is_feature_table": true,
+          "entity": ["customer_id"],
+          "grain": ["customer_id"],
+          "owner": "growth-team@jaffle.com",
+          "tags": ["customer", "lifetime"]
+        }
+      },
+      "depends_on": {"nodes": ["model.jaffle_features.customer_features_daily"]},
+      "columns": {
+        "customer_id": {
+          "name": "customer_id",
+          "description": "Customer identifier",
+          "data_type": "varchar",
+          "tags": [],
+          "meta": {
+            "feature_catalog": {"is_feature": true, "feature_type": "identifier"}
+          }
+        },
+        "lifetime_order_count": {
+          "name": "lifetime_order_count",
+          "description": "All-time order count for this customer",
+          "data_type": "integer",
+          "tags": [],
+          "meta": {
+            "feature_catalog": {
+              "is_feature": true,
+              "feature_type": "numeric",
+              "null_behavior": "zero",
+              "used_by": ["ltv_model_v3"]
+            }
+          }
+        }
+      }
+    },
+    "model.jaffle_features.consumer_dashboard_metrics": {
+      "name": "consumer_dashboard_metrics",
+      "unique_id": "model.jaffle_features.consumer_dashboard_metrics",
+      "resource_type": "model",
+      "package_name": "jaffle_features",
+      "path": "metrics/consumer_dashboard_metrics.sql",
+      "original_file_path": "models/metrics/consumer_dashboard_metrics.sql",
+      "description": "Aggregate metrics consumed by the BI dashboard",
+      "schema": "analytics",
+      "database": "warehouse",
+      "config": {"materialized": "view", "meta": {}},
+      "meta": {},
+      "depends_on": {"nodes": ["model.jaffle_features.customer_features_daily"]},
+      "columns": {}
+    }
+  },
+  "sources": {
+    "source.jaffle_features.raw.orders": {
+      "name": "orders",
+      "source_name": "raw",
+      "unique_id": "source.jaffle_features.raw.orders",
+      "resource_type": "source"
+    }
+  }
+}

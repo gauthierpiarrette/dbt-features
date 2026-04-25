@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block content %}
+<nav class="breadcrumbs">
+  <a href="{{ base_url }}/index.html">{{ catalog.project_name }}</a> ›
+  <span>{{ group.name }}</span>
+</nav>
+
+<section class="page-head">
+  <h1>{{ group.name }}</h1>
+  {% if group.description %}<p class="lede">{{ group.description }}</p>{% endif %}
+  <div class="badges">
+    {% if group.materialization %}<span class="badge">{{ group.materialization }}</span>{% endif %}
+    {% for tag in group.tags %}<span class="tag">{{ tag }}</span>{% endfor %}
+  </div>
+</section>
+
+<section class="kv-grid">
+  <div><dt>Fully qualified</dt><dd><code>{{ group.fully_qualified_name }}</code></dd></div>
+  {% if group.entity_columns %}<div><dt>Entity</dt><dd>{% for c in group.entity_columns %}<code>{{ c }}</code>{% if not loop.last %}, {% endif %}{% endfor %}</dd></div>{% endif %}
+  {% if group.grain %}<div><dt>Grain</dt><dd>{% for c in group.grain %}<code>{{ c }}</code>{% if not loop.last %}, {% endif %}{% endfor %}</dd></div>{% endif %}
+  {% if group.timestamp_column %}<div><dt>Timestamp column</dt><dd><code>{{ group.timestamp_column }}</code></dd></div>{% endif %}
+  {% if group.owner %}<div><dt>Owner</dt><dd>{{ group.owner }}</dd></div>{% endif %}
+  {% if group.freshness %}
+  <div><dt>Freshness SLA</dt><dd>
+    {% if group.freshness.warn_after %}warn after {{ group.freshness.warn_after.count }} {{ group.freshness.warn_after.period.value }}s{% endif %}
+    {% if group.freshness.warn_after and group.freshness.error_after %} · {% endif %}
+    {% if group.freshness.error_after %}error after {{ group.freshness.error_after.count }} {{ group.freshness.error_after.period.value }}s{% endif %}
+  </dd></div>
+  {% endif %}
+  <div><dt>Source file</dt><dd><code>{{ group.file_path }}</code></dd></div>
+</section>
+
+<section>
+  <h2>Features</h2>
+  {% if not group.features %}
+  <p class="muted">No columns in this model are marked <code>is_feature: true</code>.</p>
+  {% else %}
+  <table class="features-table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Column type</th>
+        <th>Null behavior</th>
+        <th>Used by</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for feature in group.features %}
+      <tr>
+        <td><a href="{{ feature_url(group, feature, base_url=base_url) }}"><code>{{ feature.name }}</code></a>
+          {% if feature.description %}<div class="muted small">{{ feature.description }}</div>{% endif %}
+        </td>
+        <td>{% if feature.feature_type %}<span class="pill pill-{{ feature.feature_type.value }}">{{ feature.feature_type.value }}</span>{% else %}—{% endif %}</td>
+        <td>{% if feature.column_type %}<code>{{ feature.column_type }}</code>{% else %}—{% endif %}</td>
+        <td>{% if feature.null_behavior %}{{ feature.null_behavior.value }}{% else %}—{% endif %}</td>
+        <td>{% if feature.used_by %}{% for u in feature.used_by %}<code>{{ u }}</code>{% if not loop.last %}, {% endif %}{% endfor %}{% else %}—{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</section>
+
+<section class="lineage-section">
+  <h2>Lineage</h2>
+  <div class="lineage-cols">
+    <div>
+      <h3>Upstream</h3>
+      {% if group.upstream %}
+      <ul class="lineage-list">
+        {% for ref in group.upstream %}
+        <li>
+          {% if ref.is_feature_table %}<a href="{{ base_url }}/groups/{{ ref.name|slugify }}/index.html"><code>{{ ref.name }}</code></a>{% else %}<code>{{ ref.name }}</code>{% endif %}
+          <span class="muted small">{{ ref.resource_type }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}<p class="muted">None</p>{% endif %}
+    </div>
+    <div>
+      <h3>Downstream (dbt)</h3>
+      {% if group.downstream %}
+      <ul class="lineage-list">
+        {% for ref in group.downstream %}
+        <li>
+          {% if ref.is_feature_table %}<a href="{{ base_url }}/groups/{{ ref.name|slugify }}/index.html"><code>{{ ref.name }}</code></a>{% else %}<code>{{ ref.name }}</code>{% endif %}
+          <span class="muted small">{{ ref.resource_type }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}<p class="muted">None</p>{% endif %}
+    </div>
+    <div>
+      <h3>ML consumers</h3>
+      {% if declared_consumers %}
+      <ul class="lineage-list">
+        {% for c in declared_consumers %}<li><code>{{ c }}</code></li>{% endfor %}
+      </ul>
+      <p class="muted small">Declared via <code>used_by</code> on individual features.</p>
+      {% else %}<p class="muted">None declared.</p>{% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}

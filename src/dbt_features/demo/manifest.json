@@ -1,0 +1,323 @@
+{
+  "metadata": {
+    "project_name": "demo_features",
+    "dbt_schema_version": "https://schemas.getdbt.com/dbt/manifest/v12.json",
+    "dbt_version": "1.8.0"
+  },
+  "nodes": {
+    "model.demo_features.stg_orders": {
+      "name": "stg_orders",
+      "unique_id": "model.demo_features.stg_orders",
+      "resource_type": "model",
+      "package_name": "demo_features",
+      "path": "staging/stg_orders.sql",
+      "original_file_path": "models/staging/stg_orders.sql",
+      "description": "Cleaned orders from the source system",
+      "schema": "analytics",
+      "database": "warehouse",
+      "config": {"materialized": "view", "meta": {}},
+      "meta": {},
+      "depends_on": {"nodes": ["source.demo_features.raw.orders"]},
+      "columns": {}
+    },
+    "model.demo_features.stg_sessions": {
+      "name": "stg_sessions",
+      "unique_id": "model.demo_features.stg_sessions",
+      "resource_type": "model",
+      "package_name": "demo_features",
+      "path": "staging/stg_sessions.sql",
+      "original_file_path": "models/staging/stg_sessions.sql",
+      "description": "Cleaned web sessions",
+      "schema": "analytics",
+      "database": "warehouse",
+      "config": {"materialized": "view", "meta": {}},
+      "meta": {},
+      "depends_on": {"nodes": ["source.demo_features.raw.sessions"]},
+      "columns": {}
+    },
+    "model.demo_features.customer_features_daily": {
+      "name": "customer_features_daily",
+      "unique_id": "model.demo_features.customer_features_daily",
+      "resource_type": "model",
+      "package_name": "demo_features",
+      "path": "features/customer_features_daily.sql",
+      "original_file_path": "models/features/customer_features_daily.sql",
+      "description": "Daily booking and engagement features per customer. Anchor table for most ranking models.",
+      "schema": "analytics",
+      "database": "warehouse",
+      "config": {"materialized": "table", "meta": {}},
+      "meta": {
+        "feature_catalog": {
+          "is_feature_table": true,
+          "entity": "customer_id",
+          "grain": ["feature_date", "customer_id"],
+          "timestamp_column": "feature_date",
+          "freshness": {
+            "warn_after": {"count": 36, "period": "hour"},
+            "error_after": {"count": 48, "period": "hour"}
+          },
+          "owner": "growth-team@example.com",
+          "tags": ["customer", "daily"]
+        }
+      },
+      "depends_on": {"nodes": ["model.demo_features.stg_orders", "model.demo_features.stg_sessions"]},
+      "columns": {
+        "feature_date": {
+          "name": "feature_date",
+          "description": "Date the features are computed for",
+          "data_type": "date",
+          "tags": [],
+          "meta": {}
+        },
+        "customer_id": {
+          "name": "customer_id",
+          "description": "Customer identifier",
+          "data_type": "varchar",
+          "tags": [],
+          "meta": {"feature_catalog": {"is_feature": true, "feature_type": "identifier"}}
+        },
+        "orders_count_7d": {
+          "name": "orders_count_7d",
+          "description": "Number of orders placed in the trailing 7 days",
+          "data_type": "integer",
+          "tags": [],
+          "meta": {
+            "feature_catalog": {
+              "is_feature": true,
+              "feature_type": "numeric",
+              "null_behavior": "zero",
+              "used_by": ["churn_model_v2", "ltv_model_v3", "ranking_model_v4"]
+            }
+          }
+        },
+        "orders_count_30d": {
+          "name": "orders_count_30d",
+          "description": "Number of orders placed in the trailing 30 days",
+          "data_type": "integer",
+          "tags": [],
+          "meta": {
+            "feature_catalog": {
+              "is_feature": true,
+              "feature_type": "numeric",
+              "null_behavior": "zero",
+              "used_by": ["churn_model_v2", "ltv_model_v3"]
+            }
+          }
+        },
+        "sessions_count_7d": {
+          "name": "sessions_count_7d",
+          "description": "Distinct web sessions in the trailing 7 days",
+          "data_type": "integer",
+          "tags": [],
+          "meta": {
+            "feature_catalog": {
+              "is_feature": true,
+              "feature_type": "numeric",
+              "null_behavior": "zero",
+              "used_by": ["churn_model_v2"]
+            }
+          }
+        },
+        "is_repeat_customer": {
+          "name": "is_repeat_customer",
+          "description": "Has the customer ordered more than once",
+          "data_type": "boolean",
+          "tags": [],
+          "meta": {
+            "feature_catalog": {
+              "is_feature": true,
+              "feature_type": "boolean",
+              "used_by": ["churn_model_v2"]
+            }
+          }
+        },
+        "preferred_category": {
+          "name": "preferred_category",
+          "description": "Most-ordered product category in the trailing 30 days",
+          "data_type": "varchar",
+          "tags": [],
+          "meta": {
+            "feature_catalog": {
+              "is_feature": true,
+              "feature_type": "categorical",
+              "null_behavior": "propagate",
+              "used_by": ["ranking_model_v4"]
+            }
+          }
+        }
+      }
+    },
+    "model.demo_features.customer_features_lifetime": {
+      "name": "customer_features_lifetime",
+      "unique_id": "model.demo_features.customer_features_lifetime",
+      "resource_type": "model",
+      "package_name": "demo_features",
+      "path": "features/customer_features_lifetime.sql",
+      "original_file_path": "models/features/customer_features_lifetime.sql",
+      "description": "Lifetime features per customer (slowly changing). Built from daily aggregates.",
+      "schema": "analytics",
+      "database": "warehouse",
+      "config": {"materialized": "table", "meta": {}},
+      "meta": {
+        "feature_catalog": {
+          "is_feature_table": true,
+          "entity": ["customer_id"],
+          "grain": ["customer_id"],
+          "owner": "growth-team@example.com",
+          "tags": ["customer", "lifetime"]
+        }
+      },
+      "depends_on": {"nodes": ["model.demo_features.customer_features_daily"]},
+      "columns": {
+        "customer_id": {
+          "name": "customer_id",
+          "description": "Customer identifier",
+          "data_type": "varchar",
+          "tags": [],
+          "meta": {"feature_catalog": {"is_feature": true, "feature_type": "identifier"}}
+        },
+        "lifetime_order_count": {
+          "name": "lifetime_order_count",
+          "description": "All-time order count for this customer",
+          "data_type": "integer",
+          "tags": [],
+          "meta": {
+            "feature_catalog": {
+              "is_feature": true,
+              "feature_type": "numeric",
+              "null_behavior": "zero",
+              "used_by": ["ltv_model_v3"]
+            }
+          }
+        },
+        "lifetime_order_value_usd": {
+          "name": "lifetime_order_value_usd",
+          "description": "All-time order value in USD",
+          "data_type": "decimal",
+          "tags": [],
+          "meta": {
+            "feature_catalog": {
+              "is_feature": true,
+              "feature_type": "numeric",
+              "null_behavior": "zero",
+              "used_by": ["ltv_model_v3"]
+            }
+          }
+        },
+        "first_order_date": {
+          "name": "first_order_date",
+          "description": "Date of the customer's first order",
+          "data_type": "date",
+          "tags": [],
+          "meta": {
+            "feature_catalog": {
+              "is_feature": true,
+              "feature_type": "timestamp",
+              "null_behavior": "propagate"
+            }
+          }
+        }
+      }
+    },
+    "model.demo_features.store_features_hourly": {
+      "name": "store_features_hourly",
+      "unique_id": "model.demo_features.store_features_hourly",
+      "resource_type": "model",
+      "package_name": "demo_features",
+      "path": "features/store_features_hourly.sql",
+      "original_file_path": "models/features/store_features_hourly.sql",
+      "description": "Hourly demand and inventory features per store. Used by the store-level ranking model.",
+      "schema": "analytics",
+      "database": "warehouse",
+      "config": {"materialized": "incremental", "meta": {}},
+      "meta": {
+        "feature_catalog": {
+          "is_feature_table": true,
+          "entity": "store_id",
+          "grain": ["feature_hour", "store_id"],
+          "timestamp_column": "feature_hour",
+          "freshness": {
+            "warn_after": {"count": 2, "period": "hour"},
+            "error_after": {"count": 6, "period": "hour"}
+          },
+          "owner": "ops-team@example.com",
+          "tags": ["store", "hourly"]
+        }
+      },
+      "depends_on": {"nodes": ["model.demo_features.stg_orders"]},
+      "columns": {
+        "feature_hour": {
+          "name": "feature_hour",
+          "description": "Hour the features are computed for (UTC)",
+          "data_type": "timestamp",
+          "tags": [],
+          "meta": {}
+        },
+        "store_id": {
+          "name": "store_id",
+          "description": "Store identifier",
+          "data_type": "varchar",
+          "tags": [],
+          "meta": {"feature_catalog": {"is_feature": true, "feature_type": "identifier"}}
+        },
+        "orders_count_1h": {
+          "name": "orders_count_1h",
+          "description": "Orders placed at this store in the trailing hour",
+          "data_type": "integer",
+          "tags": [],
+          "meta": {
+            "feature_catalog": {
+              "is_feature": true,
+              "feature_type": "numeric",
+              "null_behavior": "zero",
+              "used_by": ["store_ranking_model_v1"]
+            }
+          }
+        },
+        "demand_score": {
+          "name": "demand_score",
+          "description": "Smoothed demand intensity, 0-1",
+          "data_type": "float",
+          "tags": [],
+          "meta": {
+            "feature_catalog": {
+              "is_feature": true,
+              "feature_type": "numeric",
+              "null_behavior": "mean",
+              "used_by": ["store_ranking_model_v1"]
+            }
+          }
+        }
+      }
+    },
+    "model.demo_features.consumer_dashboard_metrics": {
+      "name": "consumer_dashboard_metrics",
+      "unique_id": "model.demo_features.consumer_dashboard_metrics",
+      "resource_type": "model",
+      "package_name": "demo_features",
+      "path": "metrics/consumer_dashboard_metrics.sql",
+      "original_file_path": "models/metrics/consumer_dashboard_metrics.sql",
+      "description": "Aggregate metrics for the BI dashboard (not a feature table).",
+      "schema": "analytics",
+      "database": "warehouse",
+      "config": {"materialized": "view", "meta": {}},
+      "meta": {},
+      "depends_on": {"nodes": ["model.demo_features.customer_features_daily"]},
+      "columns": {}
+    }
+  },
+  "sources": {
+    "source.demo_features.raw.orders": {
+      "name": "orders",
+      "source_name": "raw",
+      "unique_id": "source.demo_features.raw.orders",
+      "resource_type": "source"
+    },
+    "source.demo_features.raw.sessions": {
+      "name": "sessions",
+      "source_name": "raw",
+      "unique_id": "source.demo_features.raw.sessions",
+      "resource_type": "source"
+    }
+  }
+}

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<nav class="breadcrumbs">
+  <a href="{{ base_url }}/index.html">{{ catalog.project_name }}</a> ›
+  <a href="{{ group_url(group, base_url=base_url) }}">{{ group.name }}</a> ›
+  <span>{{ feature.name }}</span>
+</nav>
+
+<section class="page-head">
+  <h1><code>{{ feature.name }}</code></h1>
+  {% if feature.description %}<p class="lede">{{ feature.description }}</p>{% endif %}
+  <div class="badges">
+    {% if feature.feature_type %}<span class="pill pill-{{ feature.feature_type.value }}">{{ feature.feature_type.value }}</span>{% endif %}
+    {% for tag in feature.tags %}<span class="tag">{{ tag }}</span>{% endfor %}
+  </div>
+</section>
+
+<section class="kv-grid">
+  <div><dt>Feature group</dt><dd><a href="{{ group_url(group, base_url=base_url) }}"><code>{{ group.name }}</code></a></dd></div>
+  {% if feature.column_type %}<div><dt>Warehouse type</dt><dd><code>{{ feature.column_type }}</code></dd></div>{% endif %}
+  {% if feature.feature_type %}<div><dt>Semantic type</dt><dd>{{ feature.feature_type.value }}</dd></div>{% endif %}
+  {% if feature.null_behavior %}<div><dt>Null behavior</dt><dd>{{ feature.null_behavior.value }}</dd></div>{% endif %}
+  {% if group.entity_columns %}<div><dt>Entity grain</dt><dd>{% for c in group.entity_columns %}<code>{{ c }}</code>{% if not loop.last %}, {% endif %}{% endfor %}</dd></div>{% endif %}
+  {% if group.timestamp_column %}<div><dt>Time anchor</dt><dd><code>{{ group.timestamp_column }}</code></dd></div>{% endif %}
+  {% if group.owner %}<div><dt>Owner</dt><dd>{{ group.owner }}</dd></div>{% endif %}
+</section>
+
+<section>
+  <h2>Used by</h2>
+  {% if feature.used_by %}
+  <ul class="lineage-list">
+    {% for c in feature.used_by %}<li><code>{{ c }}</code></li>{% endfor %}
+  </ul>
+  <p class="muted small">Declared via <code>meta.feature_catalog.used_by</code> on this column.</p>
+  {% else %}<p class="muted">No declared consumers.</p>{% endif %}
+</section>
+{% endblock %}

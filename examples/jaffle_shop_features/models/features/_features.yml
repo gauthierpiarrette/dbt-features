@@ -1,0 +1,65 @@
+version: 2
+
+models:
+  - name: customer_features_daily
+    description: Daily booking-related features per customer
+    meta:
+      feature_catalog:
+        is_feature_table: true
+        entity: customer_id
+        grain: [feature_date, customer_id]
+        timestamp_column: feature_date
+        freshness:
+          warn_after: { count: 36, period: hour }
+          error_after: { count: 48, period: hour }
+        owner: growth-team@jaffle.com
+        tags: [customer, daily]
+    columns:
+      - name: feature_date
+        description: Date the features are computed for
+      - name: customer_id
+        description: Customer identifier
+        meta:
+          feature_catalog:
+            is_feature: true
+            feature_type: identifier
+      - name: orders_count_7d
+        description: Number of orders in the trailing 7 days
+        meta:
+          feature_catalog:
+            is_feature: true
+            feature_type: numeric
+            null_behavior: zero
+            used_by: [churn_model_v2, ltv_model_v3]
+      - name: is_repeat_customer
+        description: Has the customer ordered more than once
+        meta:
+          feature_catalog:
+            is_feature: true
+            feature_type: boolean
+            used_by: [churn_model_v2]
+
+  - name: customer_features_lifetime
+    description: Lifetime features per customer (slowly changing)
+    meta:
+      feature_catalog:
+        is_feature_table: true
+        entity: [customer_id]
+        grain: [customer_id]
+        owner: growth-team@jaffle.com
+        tags: [customer, lifetime]
+    columns:
+      - name: customer_id
+        description: Customer identifier
+        meta:
+          feature_catalog:
+            is_feature: true
+            feature_type: identifier
+      - name: lifetime_order_count
+        description: All-time order count for this customer
+        meta:
+          feature_catalog:
+            is_feature: true
+            feature_type: numeric
+            null_behavior: zero
+            used_by: [ltv_model_v3]

@@ -1,0 +1,9 @@
+name: feature_catalog
+version: '0.1.0'
+config-version: 2
+
+require-dbt-version: [">=1.6.0", "<2.0.0"]
+
+# This package ships the conventions and validation tests for the
+# `feature_catalog` metadata schema. It does not produce any models.
+macro-paths: ["macros"]

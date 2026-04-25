@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <h1>{{ catalog.project_name }}</h1>
+  <p class="lede">
+    {{ catalog.feature_groups|length }} feature group{{ '' if catalog.feature_groups|length == 1 else 's' }},
+    {{ catalog.feature_count }} feature{{ '' if catalog.feature_count == 1 else 's' }}.
+    {% if catalog.all_tags %}Tagged: {% for tag in catalog.all_tags %}<a class="tag" href="#tag-{{ tag|slugify }}">{{ tag }}</a>{% if not loop.last %} {% endif %}{% endfor %}.{% endif %}
+  </p>
+</section>
+
+{% if not catalog.feature_groups %}
+<section class="empty">
+  <h2>No feature tables found</h2>
+  <p>Mark a dbt model as a feature table by adding <code>meta.feature_catalog.is_feature_table: true</code> to your <code>schema.yml</code>, then re-run <code>dbt parse</code>.</p>
+</section>
+{% else %}
+{% for tag, groups in groups_by_tag.items() %}
+<section class="tag-section" id="tag-{{ tag|slugify }}">
+  <h2 class="tag-heading"><span class="tag">{{ tag }}</span> <span class="muted">{{ groups|length }} group{{ '' if groups|length == 1 else 's' }}</span></h2>
+  <div class="card-grid">
+    {% for group in groups %}
+    <a class="card" href="{{ group_url(group, base_url=base_url) }}">
+      <div class="card-header">
+        <h3>{{ group.name }}</h3>
+        <span class="muted">{{ group.features|length }} feature{{ '' if group.features|length == 1 else 's' }}</span>
+      </div>
+      {% if group.description %}<p class="card-desc">{{ group.description }}</p>{% endif %}
+      <ul class="meta">
+        {% if group.entity_columns %}<li><span class="kw">entity</span> {{ group.entity_columns|join(', ') }}</li>{% endif %}
+        {% if group.timestamp_column %}<li><span class="kw">timestamp</span> {{ group.timestamp_column }}</li>{% endif %}
+        {% if group.owner %}<li><span class="kw">owner</span> {{ group.owner }}</li>{% endif %}
+        {% if group.materialization %}<li><span class="kw">materialization</span> {{ group.materialization }}</li>{% endif %}
+      </ul>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endfor %}
+{% endif %}
+{% endblock %}
