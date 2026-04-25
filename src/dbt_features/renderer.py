@@ -71,12 +71,17 @@ def render_catalog(
     _copy_static_assets(output)
     _write_search_index(catalog, output)
 
+    summary_stats = _compute_summary_stats(catalog, enrichment)
+    type_bars = _compute_type_bars(catalog)
+
     index_html = env.get_template("index.html").render(
         catalog=catalog,
         groups_by_tag=catalog.feature_groups_by_tag(),
         page_title=catalog.project_name,
         base_url=".",
         enrichment=enrichment,
+        summary=summary_stats,
+        type_bars=type_bars,
     )
     (output / "index.html").write_text(index_html, encoding="utf-8")
 
@@ -169,6 +174,7 @@ def _render_group(
     fdir.mkdir(exist_ok=True)
     for feature in group.features:
         column_stats = snapshot.columns.get(feature.name) if snapshot else None
+        related = _find_related_features(feature, group)
         fhtml = env.get_template("feature.html").render(
             catalog=catalog,
             group=group,
@@ -178,8 +184,105 @@ def _render_group(
             enrichment=enrichment,
             snapshot=snapshot,
             column_stats=column_stats,
+            related_features=related,
         )
         (fdir / f"{slugify(feature.name)}.html").write_text(fhtml, encoding="utf-8")
+
+
+def _find_related_features(
+    feature: Feature, group: FeatureGroup
+) -> list[Feature]:
+    """Find related features in the same group.
+
+    Related means: shares a ``used_by`` consumer or the same ``feature_type``.
+    Returns up to 5, excluding the feature itself.
+    """
+    consumers = set(feature.used_by)
+    related: list[Feature] = []
+    seen: set[str] = {feature.name}
+
+    # First pass: shared consumers (strongest signal)
+    for f in group.features:
+        if f.name in seen:
+            continue
+        if consumers and consumers & set(f.used_by):
+            related.append(f)
+            seen.add(f.name)
+
+    # Second pass: same feature type
+    if feature.feature_type:
+        for f in group.features:
+            if f.name in seen:
+                continue
+            if f.feature_type == feature.feature_type:
+                related.append(f)
+                seen.add(f.name)
+
+    return related[:5]
+
+
+def _compute_summary_stats(
+    catalog: Catalog,
+    enrichment: dict[str, FreshnessSnapshot],
+) -> dict[str, object]:
+    """Aggregate stats for the index page hero section."""
+    from collections import Counter
+
+    type_counts: Counter[str] = Counter()
+    deprecated_count = 0
+    preview_count = 0
+    for group in catalog.feature_groups:
+        if group.lifecycle.value == "deprecated":
+            deprecated_count += 1
+        elif group.lifecycle.value == "preview":
+            preview_count += 1
+        for f in group.features:
+            ft = f.feature_type.value if f.feature_type else "unspecified"
+            type_counts[ft] += 1
+
+    fresh = warn = error = 0
+    for group in catalog.feature_groups:
+        snap = enrichment.get(group.unique_id)
+        if snap:
+            status = compute_freshness_status(snap, group.freshness)
+            if status.label == "fresh":
+                fresh += 1
+            elif status.label == "warn":
+                warn += 1
+            elif status.label == "error":
+                error += 1
+
+    return {
+        "type_counts": dict(type_counts.most_common()),
+        "deprecated": deprecated_count,
+        "preview": preview_count,
+        "fresh": fresh,
+        "warn": warn,
+        "error": error,
+        "has_enrichment": bool(enrichment),
+    }
+
+
+def _compute_type_bars(
+    catalog: Catalog,
+) -> dict[str, list[dict[str, object]]]:
+    """Per-group feature type proportions for the index card mini-bars."""
+    from collections import Counter
+
+    bars: dict[str, list[dict[str, object]]] = {}
+    for group in catalog.feature_groups:
+        counts: Counter[str] = Counter()
+        for f in group.features:
+            ft = f.feature_type.value if f.feature_type else "unspecified"
+            counts[ft] += 1
+        total = sum(counts.values())
+        if total == 0:
+            continue
+        segments: list[dict[str, object]] = []
+        for ftype, count in counts.most_common():
+            segments.append({"type": ftype, "pct": round(100 * count / total, 1)})
+        bars[group.unique_id] = segments
+    return bars
 
 
 def _copy_static_assets(output: Path) -> None:
