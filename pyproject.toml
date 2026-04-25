@@ -31,11 +31,24 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Per-warehouse extras for the optional `--connection` enrichment layer.
+# Each pulls in PyYAML (needed to read profiles.yml) plus the warehouse's
+# native driver. Repetition of pyyaml is intentional — keeps each extra
+# self-contained for users who only want one warehouse.
+duckdb = ["pyyaml>=6.0", "duckdb>=0.9"]
+postgres = ["pyyaml>=6.0", "psycopg2-binary>=2.9"]
+redshift = ["pyyaml>=6.0", "redshift-connector>=2.0"]
+snowflake = ["pyyaml>=6.0", "snowflake-connector-python>=3.0"]
+bigquery = ["pyyaml>=6.0", "google-cloud-bigquery>=3.0"]
+
 dev = [
     "pytest>=7.4",
     "pytest-cov>=4.1",
     "ruff>=0.4",
     "mypy>=1.8",
+    # Tests cover enrichment via DuckDB.
+    "pyyaml>=6.0",
+    "duckdb>=0.9",
 ]
 
 [project.scripts]

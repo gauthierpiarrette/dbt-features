@@ -68,12 +68,52 @@ _CATALOG_OPT = click.option(
     show_default=True,
     help="Clear the output directory before writing.",
 )
+@click.option(
+    "--connection",
+    "connection_profile",
+    default=None,
+    metavar="PROFILE",
+    help="Optional dbt profile name in profiles.yml. When set, the catalog is "
+    "enriched with actual freshness, row counts, and per-column stats from the warehouse.",
+)
+@click.option(
+    "--target",
+    "connection_target",
+    default=None,
+    metavar="TARGET",
+    help="Override the profile's default target. Only meaningful with --connection.",
+)
+@click.option(
+    "--profiles-dir",
+    type=click.Path(file_okay=False, path_type=Path),
+    default=None,
+    help="Directory containing profiles.yml. Defaults to $DBT_PROFILES_DIR or ~/.dbt.",
+)
+@click.option(
+    "--cache-ttl",
+    type=int,
+    default=3600,
+    show_default=True,
+    metavar="SECONDS",
+    help="How long to reuse cached enrichment data before re-querying. 0 forces refresh.",
+)
+@click.option(
+    "--no-cache",
+    is_flag=True,
+    default=False,
+    help="Skip the enrichment cache entirely (always queries the warehouse).",
+)
 def build(
     project_dir: Path,
     manifest_path: Path | None,
     catalog_path: Path | None,
     output: Path,
     clean: bool,
+    connection_profile: str | None,
+    connection_target: str | None,
+    profiles_dir: Path | None,
+    cache_ttl: int,
+    no_cache: bool,
 ) -> None:
     """Build a static feature catalog site from your dbt artifacts."""
 
@@ -91,12 +131,76 @@ def build(
         _safe_clear(output)
     output.mkdir(parents=True, exist_ok=True)
 
+    # Run warehouse enrichment first so the renderer can consume the data
+    # in a later step (3.2 wires this into the templates).
+    if connection_profile:
+        _run_enrichment(
+            catalog,
+            output=output,
+            profile_name=connection_profile,
+            target=connection_target,
+            profiles_dir=profiles_dir,
+            cache_ttl=cache_ttl,
+            use_cache=not no_cache,
+        )
+
     render_catalog(catalog, output)
 
     click.echo(
         f"Built catalog: {len(catalog.feature_groups)} feature group(s), "
         f"{catalog.feature_count} feature(s) → {output}/index.html"
     )
+
+
+def _run_enrichment(
+    catalog: object,
+    *,
+    output: Path,
+    profile_name: str,
+    target: str | None,
+    profiles_dir: Path | None,
+    cache_ttl: int,
+    use_cache: bool,
+) -> None:
+    """Fetch warehouse stats and persist to the cache file.
+
+    Kept as a thin shim so the CLI command stays readable. Translates
+    ``EnrichmentError`` to a friendly ``ClickException`` and surfaces
+    a per-group failure summary so the user sees how many tables
+    actually responded.
+    """
+
+    from dbt_features.enrichment import (
+        EnrichmentCache,
+        EnrichmentError,
+        enrich_catalog,
+    )
+
+    cache_path = output / ".cache" / "enrichment.json"
+    cache = EnrichmentCache(cache_path, ttl_seconds=cache_ttl) if use_cache else None
+    if not use_cache and cache_path.exists():
+        cache_path.unlink()
+
+    try:
+        snapshots = enrich_catalog(
+            catalog,  # type: ignore[arg-type]
+            profile_name=profile_name,
+            target=target,
+            profiles_dir=profiles_dir,
+            cache=cache,
+        )
+    except EnrichmentError as e:
+        raise click.ClickException(f"Enrichment failed: {e}") from e
+
+    failed = [uid for uid, snap in snapshots.items() if snap.error]
+    succeeded = len(snapshots) - len(failed)
+    click.echo(
+        f"Enrichment: queried {len(snapshots)} feature group(s) "
+        f"({succeeded} succeeded, {len(failed)} failed). Cache → {cache_path}"
+    )
+    if failed:
+        for uid in failed:
+            click.echo(f"  - {uid}: {snapshots[uid].error}", err=True)
 
 
 @main.command()
