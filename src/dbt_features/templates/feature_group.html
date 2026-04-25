@@ -47,7 +47,7 @@
 {% endif %}
 
 <section class="kv-grid">
-  <div><dt>Fully qualified</dt><dd><code>{{ group.fully_qualified_name }}</code></dd></div>
+  <div><dt>Fully qualified</dt><dd><code>{{ group.fully_qualified_name }}</code> <button class="copy-btn" type="button" data-copy="{{ group.fully_qualified_name }}" aria-label="Copy name"><svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25z"/><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25z"/></svg></button></dd></div>
   {% if group.entity_columns %}<div><dt>Entity</dt><dd>{% for c in group.entity_columns %}<code>{{ c }}</code>{% if not loop.last %}, {% endif %}{% endfor %}</dd></div>{% endif %}
   {% if group.grain %}<div><dt>Grain</dt><dd>{% for c in group.grain %}<code>{{ c }}</code>{% if not loop.last %}, {% endif %}{% endfor %}</dd></div>{% endif %}
   {% if group.timestamp_column %}<div><dt>Timestamp column</dt><dd><code>{{ group.timestamp_column }}</code></dd></div>{% endif %}
@@ -71,15 +71,18 @@
 <section>
   <h2>Features</h2>
   {% if not group.features %}
-  <p class="muted">No columns in this model are marked <code>is_feature: true</code>.</p>
+  <p class="muted">No feature columns found in this model.</p>
   {% else %}
-  <table class="features-table">
+  <div class="filter-bar" id="feature-filters"></div>
+  <div class="table-scroll">
+  <table class="features-table" id="features-table">
+    <caption class="sr-only">Features in {{ group.name }}</caption>
     <thead>
       <tr>
         <th>Name</th>
         <th>Type</th>
         <th>Column type</th>
-        {% if snapshot %}<th>Null %</th><th>Distinct</th>{% endif %}
+        {% if snapshot %}<th class="numeric">Null %</th><th class="numeric">Distinct</th>{% endif %}
         <th>Null behavior</th>
         <th>Status</th>
         <th>Declared ML consumers</th>
@@ -88,7 +91,7 @@
     <tbody>
       {% for feature in group.features %}
       {% set col_stats = snapshot.columns.get(feature.name) if snapshot else None %}
-      <tr class="{% if feature.lifecycle.value == 'deprecated' %}row-deprecated{% endif %}">
+      <tr id="{{ feature.name|slugify }}" class="{% if feature.lifecycle.value == 'deprecated' %}row-deprecated{% endif %}" data-feature-type="{{ feature.feature_type.value if feature.feature_type else 'unspecified' }}" data-lifecycle="{{ feature.lifecycle.value }}">
         <td><a href="{{ feature_url(group, feature, base_url=base_url) }}"><code>{{ feature.name }}</code></a>
           {% if feature.definition_version > 1 %}<span class="badge badge-version">v{{ feature.definition_version }}</span>{% endif %}
           {% if feature.description %}<div class="muted small">{{ feature.description }}</div>{% endif %}
@@ -106,6 +109,7 @@
       {% endfor %}
     </tbody>
   </table>
+  </div>
   {% endif %}
 </section>
 
