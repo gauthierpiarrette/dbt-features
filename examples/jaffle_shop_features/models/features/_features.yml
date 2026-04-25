@@ -19,24 +19,16 @@ models:
         description: Date the features are computed for
       - name: customer_id
         description: Customer identifier
-        meta:
-          feature_catalog:
-            is_feature: true
-            feature_type: identifier
       - name: orders_count_7d
         description: Number of orders in the trailing 7 days
         meta:
           feature_catalog:
-            is_feature: true
-            feature_type: numeric
             null_behavior: zero
             used_by: [churn_model_v2, ltv_model_v3]
       - name: is_repeat_customer
         description: Has the customer ordered more than once
         meta:
           feature_catalog:
-            is_feature: true
-            feature_type: boolean
             used_by: [churn_model_v2]
 
   - name: customer_features_lifetime
@@ -51,15 +43,9 @@ models:
     columns:
       - name: customer_id
         description: Customer identifier
-        meta:
-          feature_catalog:
-            is_feature: true
-            feature_type: identifier
       - name: lifetime_order_count
         description: All-time order count for this customer
         meta:
           feature_catalog:
-            is_feature: true
-            feature_type: numeric
             null_behavior: zero
             used_by: [ltv_model_v3]
