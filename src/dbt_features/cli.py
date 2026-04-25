@@ -431,12 +431,9 @@ def _demo_column_stats(name: str, row_count: int) -> tuple[int, int]:
     """Pick believable null/distinct counts for the demo, by column name.
 
     The point is for the UI to look real, not for the numbers to mean
-    anything. Hard-coded heuristics — entity columns are mostly distinct,
-    boolean-named columns have ~2 distinct, etc.
+    anything. Heuristics match feature names in the bundled demo manifest.
     """
 
-    if name in ("customer_id", "store_id"):
-        return 0, max(1, int(row_count * 0.62))  # mostly distinct identifiers
     if name.startswith("is_") or name == "is_repeat_customer":
         return 0, 2
     if name == "preferred_category":

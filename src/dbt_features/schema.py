@@ -58,9 +58,8 @@ class FreshnessPeriod(str, Enum):
 class Lifecycle(str, Enum):
     """Where this feature/feature-table is in its lifecycle.
 
-    Documentation only in v0.1 — the catalog renders the state but does not
-    block usage. The schema accepts the field today so v0.2 can add
-    deprecation warnings without a breaking change.
+    The catalog renders the state (badge + deprecation banner) but does not
+    block usage. Enforcement is left to downstream consumers.
     """
 
     ACTIVE = "active"

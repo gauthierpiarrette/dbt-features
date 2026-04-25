@@ -35,6 +35,7 @@ def test_boolean_types(data_type: str) -> None:
         "DATETIME",
         "TIMESTAMP_NTZ",
         "TIMESTAMP_LTZ",
+        "TIMESTAMP_TZ",
         "TIMESTAMPTZ",
         "timestamp",
     ],

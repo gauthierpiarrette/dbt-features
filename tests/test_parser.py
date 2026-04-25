@@ -95,11 +95,15 @@ def test_feature_type_inferred_when_not_overridden(project_dir: Path) -> None:
     assert pref.feature_type == FeatureType.CATEGORICAL
 
 
-def test_explicit_feature_type_beats_inference(project_dir: Path) -> None:
+def test_inference_on_column_with_no_feature_type_override(project_dir: Path) -> None:
+    """Column has a meta block with null_behavior + used_by but no feature_type.
+
+    Inference should fill it in from the warehouse data_type (INTEGER -> numeric).
+    """
+
     cat = parse_project(project_dir)
     lifetime = next(g for g in cat.feature_groups if g.name == "customer_features_lifetime")
     lto = next(f for f in lifetime.features if f.name == "lifetime_order_count")
-    # No explicit feature_type in fixture -> inferred from INTEGER.
     assert lto.feature_type == FeatureType.NUMERIC
 
 
