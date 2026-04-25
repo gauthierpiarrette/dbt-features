@@ -74,7 +74,7 @@
           "description": "Customer identifier",
           "data_type": "varchar",
           "tags": [],
-          "meta": {"feature_catalog": {"is_feature": true, "feature_type": "identifier"}}
+          "meta": {}
         },
         "orders_count_7d": {
           "name": "orders_count_7d",
@@ -83,8 +83,6 @@
           "tags": [],
           "meta": {
             "feature_catalog": {
-              "is_feature": true,
-              "feature_type": "numeric",
               "null_behavior": "zero",
               "used_by": ["churn_model_v2", "ltv_model_v3", "ranking_model_v4"]
             }
@@ -97,8 +95,6 @@
           "tags": [],
           "meta": {
             "feature_catalog": {
-              "is_feature": true,
-              "feature_type": "numeric",
               "null_behavior": "zero",
               "definition_version": 2,
               "used_by": ["churn_model_v2", "ltv_model_v3"]
@@ -112,8 +108,6 @@
           "tags": [],
           "meta": {
             "feature_catalog": {
-              "is_feature": true,
-              "feature_type": "numeric",
               "null_behavior": "zero",
               "lifecycle": "deprecated",
               "replacement": "orders_count_30d"
@@ -127,8 +121,6 @@
           "tags": [],
           "meta": {
             "feature_catalog": {
-              "is_feature": true,
-              "feature_type": "numeric",
               "null_behavior": "zero",
               "used_by": ["churn_model_v2"]
             }
@@ -141,8 +133,6 @@
           "tags": [],
           "meta": {
             "feature_catalog": {
-              "is_feature": true,
-              "feature_type": "boolean",
               "used_by": ["churn_model_v2"]
             }
           }
@@ -154,7 +144,6 @@
           "tags": [],
           "meta": {
             "feature_catalog": {
-              "is_feature": true,
               "feature_type": "categorical",
               "null_behavior": "propagate",
               "used_by": ["ranking_model_v4"]
@@ -191,7 +180,7 @@
           "description": "Customer identifier",
           "data_type": "varchar",
           "tags": [],
-          "meta": {"feature_catalog": {"is_feature": true, "feature_type": "identifier"}}
+          "meta": {}
         },
         "lifetime_order_count": {
           "name": "lifetime_order_count",
@@ -200,8 +189,6 @@
           "tags": [],
           "meta": {
             "feature_catalog": {
-              "is_feature": true,
-              "feature_type": "numeric",
               "null_behavior": "zero",
               "used_by": ["ltv_model_v3"]
             }
@@ -214,8 +201,6 @@
           "tags": [],
           "meta": {
             "feature_catalog": {
-              "is_feature": true,
-              "feature_type": "numeric",
               "null_behavior": "zero",
               "used_by": ["ltv_model_v3"]
             }
@@ -228,8 +213,6 @@
           "tags": [],
           "meta": {
             "feature_catalog": {
-              "is_feature": true,
-              "feature_type": "timestamp",
               "null_behavior": "propagate"
             }
           }
@@ -275,7 +258,7 @@
           "description": "Store identifier",
           "data_type": "varchar",
           "tags": [],
-          "meta": {"feature_catalog": {"is_feature": true, "feature_type": "identifier"}}
+          "meta": {}
         },
         "orders_count_1h": {
           "name": "orders_count_1h",
@@ -284,8 +267,6 @@
           "tags": [],
           "meta": {
             "feature_catalog": {
-              "is_feature": true,
-              "feature_type": "numeric",
               "null_behavior": "zero",
               "used_by": ["store_ranking_model_v1"]
             }
@@ -298,8 +279,6 @@
           "tags": [],
           "meta": {
             "feature_catalog": {
-              "is_feature": true,
-              "feature_type": "numeric",
               "null_behavior": "mean",
               "used_by": ["store_ranking_model_v1"]
             }
