@@ -259,7 +259,7 @@ def _render_model(
     rank = {"fresh": 0, "warn": 1, "error": 2, "unknown": 3}
     saw_any = False
     distinct_groups = []
-    for uid, gf_pairs in by_group.items():
+    for _uid, gf_pairs in by_group.items():
         group = gf_pairs[0][0]
         snap = enrichment.get(group.unique_id)
         if snap is not None:
@@ -413,10 +413,7 @@ def _compute_facets(
             freshness_counts[status.label] += 1
 
     def _to_chips(c: Counter[str], sort_by_count: bool = True) -> list[dict[str, object]]:
-        if sort_by_count:
-            items = c.most_common()
-        else:
-            items = sorted(c.items())
+        items = c.most_common() if sort_by_count else sorted(c.items())
         return [{"value": v, "label": v, "count": n} for v, n in items]
 
     return {
