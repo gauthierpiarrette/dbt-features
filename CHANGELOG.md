@@ -6,7 +6,7 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-## [0.3.0] - UI redesign, ML model pages, faster search
+## [0.3.0] - 2026-04-26 - UI redesign, ML model pages, faster search
 
 ### Added
 - **ML model pages.** Each consumer in `used_by` now gets its own page
