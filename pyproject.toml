@@ -55,6 +55,7 @@ include = [
     "tests",
     "examples",
     "dbt_package",
+    "docs",
     "README.md",
     "LICENSE",
     "CHANGELOG.md",

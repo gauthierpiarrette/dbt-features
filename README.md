@@ -77,7 +77,9 @@ dbt-features serve --output ./target/feature-catalog
 
 For CI: run `dbt-features build` after `dbt parse`, then publish the
 output directory to GitHub Pages, S3, Netlify, or anywhere that serves
-static files.
+static files. See [`docs/example-github-action.yml`](./docs/example-github-action.yml)
+for a copy-paste GitHub Action that builds the catalog on every merge and
+publishes it to GitHub Pages.
 
 ## Metadata schema
 

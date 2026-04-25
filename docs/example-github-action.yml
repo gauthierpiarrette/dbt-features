@@ -1,6 +1,9 @@
-# Reference workflow: build the catalog and publish to GitHub Pages.
-# Copy this into your dbt project as a starting point.
-name: feature-catalog (example)
+# Reference workflow — NOT meant to run in this repo.
+#
+# Copy this file into your own dbt project at .github/workflows/feature-catalog.yml
+# (or any name you like). It builds the catalog on every push to main and publishes
+# the static site to GitHub Pages. Adjust paths and triggers to match your project.
+name: feature-catalog
 
 on:
   push:
