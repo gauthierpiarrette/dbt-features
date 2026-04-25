@@ -1,3 +1,7 @@
+<p align="left">
+  <img src="src/dbt_features/static/favicon.svg" width="64" height="64" alt="dbt-features logo">
+</p>
+
 # dbt-features
 
 [![tests](https://github.com/gauthierpiarrette/dbt-features/actions/workflows/test.yml/badge.svg)](https://github.com/gauthierpiarrette/dbt-features/actions/workflows/test.yml)
