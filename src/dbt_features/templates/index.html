@@ -1,24 +1,19 @@
 {% extends "base.html" %}
 {% block content %}
-<section class="hero">
-  <h1>{{ catalog.project_name }}</h1>
-  <p class="lede">
-    {{ catalog.feature_groups|length }} feature group{{ '' if catalog.feature_groups|length == 1 else 's' }},
-    {{ catalog.feature_count }} feature{{ '' if catalog.feature_count == 1 else 's' }}.
-    {% if catalog.all_tags %}Tagged: {% for tag in catalog.all_tags %}<a class="tag" href="#tag-{{ tag|slugify }}">{{ tag }}</a>{% if not loop.last %} {% endif %}{% endfor %}.{% endif %}
-  </p>
-  {% if summary and catalog.feature_count %}
-  <div class="summary-bar">
-    {% for ftype, count in summary.type_counts.items() %}
-    <span class="summary-stat"><span class="pill pill-{{ ftype }}">{{ ftype }}</span> {{ count }}</span>
-    {% endfor %}
-    {% if summary.deprecated %}<span class="summary-stat"><span class="lifecycle lifecycle-deprecated">deprecated</span> {{ summary.deprecated }}</span>{% endif %}
-    {% if summary.preview %}<span class="summary-stat"><span class="lifecycle lifecycle-preview">preview</span> {{ summary.preview }}</span>{% endif %}
-    {% if summary.has_enrichment %}
-    {% if summary.fresh %}<span class="summary-stat"><span class="freshness-dot freshness-dot-fresh"></span> {{ summary.fresh }} fresh</span>{% endif %}
-    {% if summary.warn %}<span class="summary-stat"><span class="freshness-dot freshness-dot-warn"></span> {{ summary.warn }} warn</span>{% endif %}
-    {% if summary.error %}<span class="summary-stat"><span class="freshness-dot freshness-dot-error"></span> {{ summary.error }} stale</span>{% endif %}
-    {% endif %}
+<section class="index-hero">
+  <div class="index-hero-text">
+    <h1>{{ catalog.project_name }}</h1>
+    <p class="lede">
+      <strong>{{ catalog.feature_groups|length }}</strong> feature group{{ '' if catalog.feature_groups|length == 1 else 's' }}
+      · <strong>{{ catalog.feature_count }}</strong> feature{{ '' if catalog.feature_count == 1 else 's' }}
+      {% if catalog.all_entities %} · <strong>{{ catalog.all_entities|length }}</strong> entit{{ 'y' if catalog.all_entities|length == 1 else 'ies' }}{% endif %}
+      {% if catalog.all_models %} · <strong>{{ catalog.all_models|length }}</strong> ML model{{ '' if catalog.all_models|length == 1 else 's' }}{% endif %}
+    </p>
+  </div>
+  {% if catalog.feature_groups %}
+  <div class="index-hero-actions">
+    <span class="index-hero-counter" data-card-counter>{{ catalog.feature_groups|length }} shown</span>
+    <button type="button" class="link-btn" data-clear-filters hidden>Clear filters</button>
   </div>
   {% endif %}
 </section>
@@ -29,39 +24,177 @@
   <p>Mark a dbt model as a feature table by adding <code>meta.feature_catalog.is_feature_table: true</code> to your <code>schema.yml</code>, then re-run <code>dbt parse</code>.</p>
 </section>
 {% else %}
-{% for tag, groups in groups_by_tag.items() %}
-<section class="tag-section" id="tag-{{ tag|slugify }}">
-  <h2 class="tag-heading"><span class="tag">{{ tag }}</span> <span class="muted">{{ groups|length }} group{{ '' if groups|length == 1 else 's' }}</span></h2>
-  <div class="card-grid">
-    {% for group in groups %}
-    {% set snap = enrichment.get(group.unique_id) if enrichment else None %}
-    {% set status = freshness_status(snap, group.freshness) if snap else None %}
-    <a class="card {% if group.lifecycle.value == 'deprecated' %}card-deprecated{% endif %}" href="{{ group_url(group, base_url=base_url) }}">
-      <div class="card-header">
-        <h3>
-          {% if status %}<span class="freshness-dot freshness-dot-{{ status.label }}" title="{{ status.label }} — last updated {{ status.age_human }}"></span>{% endif %}
-          {{ group.name }}
-          {% if group.lifecycle.value != 'active' %}<span class="lifecycle lifecycle-{{ group.lifecycle.value }}">{{ group.lifecycle.value }}</span>{% endif %}
-          {% if group.definition_version > 1 %}<span class="badge badge-version">v{{ group.definition_version }}</span>{% endif %}
-        </h3>
-        <span class="muted">{{ group.features|length }} feature{{ '' if group.features|length == 1 else 's' }}</span>
-      </div>
-      {% if group.description %}<p class="card-desc">{{ group.description }}</p>{% endif %}
-      <ul class="meta">
-        {% if group.entity_columns %}<li><span class="kw">entity</span> {{ group.entity_columns|join(', ') }}</li>{% endif %}
-        {% if group.timestamp_column %}<li><span class="kw">timestamp</span> {{ group.timestamp_column }}</li>{% endif %}
-        {% if group.owner %}<li><span class="kw">owner</span> {{ group.owner }}</li>{% endif %}
-        {% if group.materialization %}<li><span class="kw">materialization</span> {{ group.materialization }}</li>{% endif %}
-      </ul>
-      {% if type_bars.get(group.unique_id) %}
-      <div class="type-bar" title="Feature type distribution">
-        {% for seg in type_bars[group.unique_id] %}<span class="type-bar-seg type-bar-{{ seg.type }}" style="width:{{ seg.pct }}%" title="{{ seg.type }}: {{ seg.pct }}%"></span>{% endfor %}
-      </div>
-      {% endif %}
-    </a>
-    {% endfor %}
-  </div>
-</section>
-{% endfor %}
+
+{% if not summary.has_enrichment %}
+<aside class="callout">
+  <strong>No warehouse connection.</strong>
+  Pass <code>--connection &lt;profile&gt;</code> to populate freshness, row counts, null %, and per-feature cardinality from your warehouse.
+</aside>
 {% endif %}
+
+<section class="filter-toolbar" id="index-filters" aria-label="Filters">
+  {% macro chip(facet, value, label, count, extra_class='') %}
+    <button type="button" class="chip {{ extra_class }}" role="checkbox" aria-checked="false"
+            data-facet="{{ facet }}" data-value="{{ value }}">
+      <span class="chip-label">{{ label }}</span>
+      <span class="chip-count">{{ count }}</span>
+    </button>
+  {% endmacro %}
+
+  {% if facets.entity %}
+  <div class="filter-row">
+    <span class="filter-row-label">Entity</span>
+    <div class="filter-row-chips">
+      {% for c in facets.entity %}
+        {% set color = entity_palette.get(c.value) %}
+        <button type="button" class="chip chip-entity" role="checkbox" aria-checked="false"
+                data-facet="entity" data-value="{{ c.value }}"
+                {% if color %}style="--chip-accent: {{ color }};"{% endif %}>
+          <span class="chip-dot" aria-hidden="true"></span>
+          <span class="chip-label">{{ c.label }}</span>
+          <span class="chip-count">{{ c.count }}</span>
+        </button>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if facets.type %}
+  <div class="filter-row">
+    <span class="filter-row-label">Type</span>
+    <div class="filter-row-chips">
+      {% for c in facets.type %}
+        {{ chip('type', c.value, c.label, c.count, 'pill pill-' ~ c.value) }}
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if facets.lifecycle and (facets.lifecycle|length > 1) %}
+  <div class="filter-row">
+    <span class="filter-row-label">Lifecycle</span>
+    <div class="filter-row-chips">
+      {% for c in facets.lifecycle %}
+        {{ chip('lifecycle', c.value, c.label, c.count, 'lifecycle lifecycle-' ~ c.value) }}
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if facets.freshness %}
+  <div class="filter-row">
+    <span class="filter-row-label">Freshness</span>
+    <div class="filter-row-chips">
+      {% for c in facets.freshness %}
+        <button type="button" class="chip chip-freshness" role="checkbox" aria-checked="false"
+                data-facet="freshness" data-value="{{ c.value }}">
+          <span class="freshness-dot freshness-dot-{{ c.value }}" aria-hidden="true"></span>
+          <span class="chip-label">{{ c.label }}</span>
+          <span class="chip-count">{{ c.count }}</span>
+        </button>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if facets.tag %}
+  <div class="filter-row">
+    <span class="filter-row-label">Tag</span>
+    <div class="filter-row-chips">
+      {% for c in facets.tag %}
+        <button type="button" class="chip chip-tag" role="checkbox" aria-checked="false"
+                data-facet="tag" data-value="{{ c.value }}">
+          <span class="chip-label">{{ c.label }}</span>
+          <span class="chip-count">{{ c.count }}</span>
+        </button>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if facets.owner and (facets.owner|length > 1) %}
+  <div class="filter-row">
+    <span class="filter-row-label">Owner</span>
+    <div class="filter-row-chips">
+      {% for c in facets.owner %}
+        <button type="button" class="chip chip-owner" role="checkbox" aria-checked="false"
+                data-facet="owner" data-value="{{ c.value }}">
+          <span class="chip-label">{{ c.label }}</span>
+          <span class="chip-count">{{ c.count }}</span>
+        </button>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</section>
+
+{% set cards_by_id = {} %}
+{% for c in cards %}{% set _ = cards_by_id.update({c.group.unique_id: c}) %}{% endfor %}
+
+<section class="entity-sections" id="entity-sections">
+{% for entity, groups in groups_by_entity.items() %}
+  {% set color = entity_palette.get(entity) %}
+  <section class="entity-section" data-entity="{{ entity }}" {% if color %}style="--entity-accent: {{ color }};"{% endif %}>
+    <header class="entity-section-head">
+      <h2>
+        <span class="entity-dot" aria-hidden="true"></span>
+        {% if entity in catalog.all_entities %}<code>{{ entity }}</code>{% else %}{{ entity }}{% endif %}
+      </h2>
+      <span class="muted small" data-section-count>{{ groups|length }} group{{ '' if groups|length == 1 else 's' }}</span>
+    </header>
+    <div class="card-grid">
+      {% for group in groups %}
+      {% set card = cards_by_id[group.unique_id] %}
+      {% set snap = card.snapshot %}
+      {% set status_label = card.status_label %}
+      <a class="card {% if group.lifecycle.value == 'deprecated' %}card-deprecated{% endif %}"
+         href="{{ group_url(group, base_url=base_url) }}"
+         data-card
+         data-entities="{{ card.entities|join(',') }}"
+         data-tags="{{ card.tags|join(',') }}"
+         data-types="{{ card.types|join(',') }}"
+         data-lifecycle="{{ card.lifecycle }}"
+         data-owner="{{ card.owner }}"
+         data-freshness="{{ status_label }}">
+        <div class="card-head">
+          <div class="card-title">
+            {% if status_label %}
+            <span class="freshness-dot freshness-dot-{{ status_label }}" title="{{ status_label }} — last updated {{ card.status_age }}" aria-label="{{ status_label }}"></span>
+            {% endif %}
+            <h3>{{ group.name }}</h3>
+            {% if group.lifecycle.value != 'active' %}<span class="lifecycle lifecycle-{{ group.lifecycle.value }}">{{ group.lifecycle.value }}</span>{% endif %}
+            {% if group.definition_version > 1 %}<span class="badge badge-version">v{{ group.definition_version }}</span>{% endif %}
+          </div>
+          <span class="card-feature-count">{{ group.features|length }}<span class="muted small">{{ ' feature' if group.features|length == 1 else ' features' }}</span></span>
+        </div>
+        {% if group.description %}<p class="card-desc">{{ group.description }}</p>{% endif %}
+        <div class="card-meta">
+          {% if group.entity_columns %}
+            {% for c in group.entity_columns %}<span class="card-chip card-chip-entity"><code>{{ c }}</code></span>{% endfor %}
+          {% endif %}
+          {% if group.timestamp_column %}<span class="card-chip"><svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6.5"/><path d="M8 4v4l2.5 1.5"/></svg><code>{{ group.timestamp_column }}</code></span>{% endif %}
+          {% if group.materialization %}<span class="card-chip muted small">{{ group.materialization }}</span>{% endif %}
+          {% for tag in group.tags %}<span class="card-chip tag">{{ tag }}</span>{% endfor %}
+        </div>
+        {% if type_bars.get(group.unique_id) %}
+        <div class="type-bar" title="Feature type distribution">
+          {% for seg in type_bars[group.unique_id] %}<span class="type-bar-seg type-bar-{{ seg.type }}" style="width:{{ seg.pct }}%" title="{{ seg.type }}: {{ seg.pct }}%"></span>{% endfor %}
+        </div>
+        {% endif %}
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+{% endfor %}
+</section>
+
+<section class="empty" id="filter-empty" hidden>
+  <h2>No matches</h2>
+  <p>No feature groups match the active filters. <button type="button" class="link-btn" data-clear-filters>Clear filters</button>.</p>
+</section>
+
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script src="{{ base_url }}/static/filter.js" defer></script>
 {% endblock %}
