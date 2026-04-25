@@ -289,8 +289,29 @@ a.tag:hover { text-decoration: none; opacity: 0.85; }
   background: var(--bg-soft);
   padding: 24px;
   overflow: auto;
+  min-height: 200px;
 }
+#mermaid-host { display: flex; justify-content: center; }
 .mermaid { background: transparent; }
+/* Last-mile polish on Mermaid's rendered SVG. Matches our --radius and
+   gives clickable nodes an obvious affordance. */
+.lineage-graph svg .node rect,
+.lineage-graph svg .node polygon {
+  rx: 6px;
+  ry: 6px;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.08));
+}
+.lineage-graph svg .node[onclick],
+.lineage-graph svg .node.clickable {
+  cursor: pointer;
+}
+.lineage-graph svg .node[onclick]:hover rect,
+.lineage-graph svg .node.clickable:hover rect {
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.18));
+}
+.lineage-graph svg .edgePath path {
+  stroke-width: 1.5px;
+}
 
 .empty {
   text-align: center;

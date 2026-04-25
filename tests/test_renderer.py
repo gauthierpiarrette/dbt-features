@@ -50,6 +50,23 @@ def test_lineage_uses_bundled_mermaid_not_cdn(built_catalog: Path) -> None:
     assert bundled.stat().st_size > 100_000  # sanity: real bundle, not a stub
 
 
+def test_lineage_themed_and_re_renders_on_theme_change(built_catalog: Path) -> None:
+    """Mermaid must use our color palette and re-render when the theme
+    toggles, so it stays consistent with the rest of the page."""
+
+    content = (built_catalog / "lineage.html").read_text()
+    # Themed via Mermaid's `base` theme + custom themeVariables.
+    assert 'theme: "base"' in content
+    assert "themeVariables" in content
+    # Both palettes should be present (light + dark) so toggling works
+    # without re-fetching the page.
+    assert "#1f3653" in content  # dark-mode primary
+    assert "#ddf4ff" in content  # light-mode primary
+    # MutationObserver wires up re-render on data-theme changes.
+    assert "data-theme" in content
+    assert "MutationObserver" in content
+
+
 def test_per_group_pages_written(built_catalog: Path) -> None:
     g1 = built_catalog / "groups" / "customer-features-daily" / "index.html"
     g2 = built_catalog / "groups" / "customer-features-lifetime" / "index.html"

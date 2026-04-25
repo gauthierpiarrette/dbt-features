@@ -6,7 +6,10 @@
 </section>
 
 <section class="lineage-graph">
-  <pre class="mermaid">{{ mermaid_source }}</pre>
+  <div id="mermaid-host"></div>
+  {# Source kept in a <template> so we can re-render with new theme variables
+     when the user toggles dark/light mode without re-fetching the page. #}
+  <template id="mermaid-source"><pre class="mermaid">{{ mermaid_source }}</pre></template>
   <noscript>
     <p class="muted">Lineage graph requires JavaScript. Source:</p>
     <pre><code>{{ mermaid_source }}</code></pre>
@@ -19,6 +22,67 @@
    works offline, behind strict CSPs, and in air-gapped environments. #}
 <script src="{{ base_url }}/static/mermaid.min.js"></script>
 <script>
-  window.mermaid.initialize({ startOnLoad: true, securityLevel: "loose", theme: "neutral" });
+  (function () {
+    var FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", Roboto, Helvetica, Arial, sans-serif';
+
+    function themeVars() {
+      var dark = document.documentElement.getAttribute("data-theme") !== "light";
+      // Palette mirrors style.css. Keep these in sync if the CSS variables move.
+      return dark ? {
+        primaryColor: "#1f3653",
+        primaryTextColor: "#e6edf3",
+        primaryBorderColor: "#2f81f7",
+        lineColor: "#8b949e",
+        mainBkg: "#1f3653",
+        background: "transparent",
+        edgeLabelBackground: "#161b22",
+        clusterBkg: "#161b22",
+        clusterBorder: "#30363d",
+        fontFamily: FONT_FAMILY,
+        fontSize: "14px",
+      } : {
+        primaryColor: "#ddf4ff",
+        primaryTextColor: "#1f2328",
+        primaryBorderColor: "#0969da",
+        lineColor: "#6a737d",
+        mainBkg: "#ddf4ff",
+        background: "transparent",
+        edgeLabelBackground: "#f7f8fa",
+        clusterBkg: "#f7f8fa",
+        clusterBorder: "#e1e4e8",
+        fontFamily: FONT_FAMILY,
+        fontSize: "14px",
+      };
+    }
+
+    function render() {
+      var host = document.getElementById("mermaid-host");
+      var tmpl = document.getElementById("mermaid-source");
+      if (!host || !tmpl) return;
+      host.innerHTML = "";
+      host.appendChild(tmpl.content.cloneNode(true));
+      window.mermaid.initialize({
+        startOnLoad: false,
+        securityLevel: "loose",
+        theme: "base",
+        themeVariables: themeVars(),
+        flowchart: { curve: "basis", padding: 18, nodeSpacing: 40, rankSpacing: 60 },
+      });
+      window.mermaid.run({ nodes: host.querySelectorAll(".mermaid") });
+    }
+
+    render();
+
+    // Re-render when the theme toggle flips data-theme on <html>.
+    var observer = new MutationObserver(function (mutations) {
+      for (var i = 0; i < mutations.length; i++) {
+        if (mutations[i].attributeName === "data-theme") {
+          render();
+          break;
+        }
+      }
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  })();
 </script>
 {% endblock %}
