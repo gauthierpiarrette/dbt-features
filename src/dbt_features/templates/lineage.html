@@ -15,8 +15,10 @@
 {% endblock %}
 
 {% block scripts %}
-<script type="module">
-  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
-  mermaid.initialize({ startOnLoad: true, securityLevel: "loose", theme: "neutral" });
+{# Mermaid is bundled locally (see THIRD_PARTY_LICENSES.md). The catalog
+   works offline, behind strict CSPs, and in air-gapped environments. #}
+<script src="{{ base_url }}/static/mermaid.min.js"></script>
+<script>
+  window.mermaid.initialize({ startOnLoad: true, securityLevel: "loose", theme: "neutral" });
 </script>
 {% endblock %}

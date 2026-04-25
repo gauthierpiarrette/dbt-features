@@ -34,6 +34,22 @@ def test_lineage_page_written(built_catalog: Path) -> None:
     assert "customer_features_lifetime" in content
 
 
+def test_lineage_uses_bundled_mermaid_not_cdn(built_catalog: Path) -> None:
+    """The lineage page must not depend on a CDN. Catching this in a test
+    prevents accidental regression to a remote import — which silently
+    breaks the page in air-gapped / CSP-restricted environments."""
+
+    lineage = built_catalog / "lineage.html"
+    content = lineage.read_text()
+    assert "cdn.jsdelivr.net" not in content
+    assert "unpkg.com" not in content
+    assert "static/mermaid.min.js" in content
+    # The actual JS must be present in the output tree.
+    bundled = built_catalog / "static" / "mermaid.min.js"
+    assert bundled.exists()
+    assert bundled.stat().st_size > 100_000  # sanity: real bundle, not a stub
+
+
 def test_per_group_pages_written(built_catalog: Path) -> None:
     g1 = built_catalog / "groups" / "customer-features-daily" / "index.html"
     g2 = built_catalog / "groups" / "customer-features-lifetime" / "index.html"
