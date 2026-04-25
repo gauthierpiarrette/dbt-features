@@ -7,7 +7,7 @@
 </nav>
 
 <section class="page-head">
-  <h1><code>{{ feature.name }}</code></h1>
+  <h1><code>{{ feature.name }}</code> <button class="copy-btn" type="button" data-copy="{{ group.name }}.{{ feature.name }}" aria-label="Copy feature name"><svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25z"/><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25z"/></svg></button></h1>
   {% if feature.description %}<p class="lede">{{ feature.description }}</p>{% endif %}
   <div class="badges">
     {% if feature.lifecycle.value != 'active' %}<span class="lifecycle lifecycle-{{ feature.lifecycle.value }}">{{ feature.lifecycle.value }}</span>{% endif %}
@@ -74,4 +74,20 @@
   <p class="muted small">Declared manually via <code>meta.feature_catalog.used_by</code> on this column. dbt-internal consumers are listed under "Downstream dbt models" on the feature group page.</p>
   {% else %}<p class="muted">No declared consumers.</p>{% endif %}
 </section>
+
+{% if related_features %}
+<section>
+  <h2>Related features</h2>
+  <ul class="related-list">
+    {% for rf in related_features %}
+    <li>
+      <a href="{{ feature_url(group, rf, base_url=base_url) }}"><code>{{ rf.name }}</code></a>
+      {% if rf.feature_type %}<span class="pill pill-{{ rf.feature_type.value }}">{{ rf.feature_type.value }}</span>{% endif %}
+      {% if rf.description %}<span class="muted small">{{ rf.description }}</span>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  <p class="muted small">Features in the same group that share ML consumers or semantic type.</p>
+</section>
+{% endif %}
 {% endblock %}
