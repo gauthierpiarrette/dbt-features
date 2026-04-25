@@ -12,7 +12,7 @@
   <a href="https://github.com/gauthierpiarrette/dbt-features/actions/workflows/test.yml"><img src="https://github.com/gauthierpiarrette/dbt-features/actions/workflows/test.yml/badge.svg" alt="tests"></a>
   <a href="https://gauthierpiarrette.github.io/dbt-features/"><img src="https://github.com/gauthierpiarrette/dbt-features/actions/workflows/deploy-demo.yml/badge.svg" alt="demo"></a>
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.10%2B-blue.svg" alt="python"></a>
-  <a href="https://github.com/gauthierpiarrette/dbt-features"><img src="https://img.shields.io/badge/coverage-88%25-brightgreen.svg" alt="coverage"></a>
+  <a href="https://codecov.io/gh/gauthierpiarrette/dbt-features"><img src="https://codecov.io/gh/gauthierpiarrette/dbt-features/branch/main/graph/badge.svg" alt="coverage"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-green.svg" alt="license"></a>
 </p>
 
@@ -75,7 +75,7 @@ dbt-features serve --output ./catalog
 
 - **[Metadata schema](docs/schema.md)** - how to mark a model as a feature table
 - **[Warehouse enrichment](docs/enrichment.md)** - freshness, row counts, profile examples
-- **[dbt package](docs/dbt-package.md)** - compile-time validation
+- **[dbt package](dbt_package/README.md)** - compile-time validation
 - **[Deploying the catalog](docs/deploy.md)** - GitHub Pages, S3, Netlify
 
 ## Development

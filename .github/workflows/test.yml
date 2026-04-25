@@ -27,7 +27,13 @@ jobs:
       - name: Lint
         run: ruff check src tests
       - name: Test
-        run: pytest -q --cov=dbt_features --cov-report=term
+        run: pytest -q --cov=dbt_features --cov-report=term --cov-report=xml
+      - name: Upload coverage to Codecov
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: false
 
   build-package:
     runs-on: ubuntu-latest
