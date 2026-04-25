@@ -174,7 +174,7 @@ def _render_group(
             group=group,
             feature=feature,
             page_title=f"{feature.name} — {group.name}",
-            base_url="../../../..",
+            base_url="../../..",
             enrichment=enrichment,
             snapshot=snapshot,
             column_stats=column_stats,
@@ -207,7 +207,7 @@ def _write_search_index(catalog: Catalog, output: Path) -> None:
                 "description": group.description,
                 "tags": list(group.tags),
                 "owner": group.owner,
-                "url": _group_url(group, base_url="."),
+                "url": _group_url(group, base_url=""),
             }
         )
         for feature in group.features:
@@ -219,7 +219,7 @@ def _write_search_index(catalog: Catalog, output: Path) -> None:
                     "description": feature.description,
                     "feature_type": feature.feature_type.value if feature.feature_type else None,
                     "tags": list(feature.tags),
-                    "url": _feature_url(group, feature, base_url="."),
+                    "url": _feature_url(group, feature, base_url=""),
                 }
             )
     (output / "static" / "search-index.json").write_text(

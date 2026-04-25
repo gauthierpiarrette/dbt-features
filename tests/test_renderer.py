@@ -163,8 +163,9 @@ def test_theme_toggle_present_on_pages(built_catalog: Path) -> None:
 def test_breadcrumb_links_use_relative_paths(built_catalog: Path) -> None:
     f = built_catalog / "groups" / "customer-features-daily" / "features" / "orders-count-7d.html"
     content = f.read_text()
-    # Feature pages need to walk back up four levels to reach root
-    assert "../../../../index.html" in content
+    # Feature pages are 3 dirs deep: groups/<slug>/features/<name>.html
+    assert "../../../index.html" in content
+    assert "../../../../index.html" not in content
 
 
 def test_slugify_handles_underscores_and_punctuation() -> None:

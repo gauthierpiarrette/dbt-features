@@ -50,7 +50,7 @@
     <span>{{ catalog.feature_groups|length }} feature group{{ '' if catalog.feature_groups|length == 1 else 's' }} · {{ catalog.feature_count }} feature{{ '' if catalog.feature_count == 1 else 's' }}</span>
     <span class="generated-at">Built {{ catalog.generated_at.strftime('%Y-%m-%d %H:%M UTC') }}</span>
   </footer>
-  <script>window.SEARCH_INDEX_URL = "{{ base_url }}/static/search-index.json";</script>
+  <script>window.SEARCH_BASE_URL = "{{ base_url }}"; window.SEARCH_INDEX_URL = "{{ base_url }}/static/search-index.json";</script>
   <script src="{{ base_url }}/static/search.js" defer></script>
   <script src="{{ base_url }}/static/theme.js" defer></script>
   {% block scripts %}{% endblock %}

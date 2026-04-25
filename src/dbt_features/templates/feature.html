@@ -53,7 +53,7 @@
   {% if feature.feature_type %}<div><dt>Semantic type</dt><dd>{{ feature.feature_type.value }}</dd></div>{% endif %}
   {% if feature.null_behavior %}<div><dt>Null behavior</dt><dd>{{ feature.null_behavior.value }}</dd></div>{% endif %}
   {% if column_stats and snapshot and snapshot.row_count is not none %}
-  <div><dt>Null rate</dt><dd>{{ humanize_percent(column_stats.null_count, snapshot.row_count) }}{% if column_stats.null_count is not none %} <span class="muted">({{ column_stats.null_count|humanize_count }} of {{ snapshot.row_count|humanize_count }}){% endif %}</span></dd></div>
+  <div><dt>Null rate</dt><dd>{{ humanize_percent(column_stats.null_count, snapshot.row_count) }}{% if column_stats.null_count is not none %} <span class="muted">({{ column_stats.null_count|humanize_count }} of {{ snapshot.row_count|humanize_count }})</span>{% endif %}</dd></div>
   {% endif %}
   {% if column_stats and column_stats.distinct_count is not none %}
   <div><dt>Distinct values</dt><dd>{{ column_stats.distinct_count|humanize_count }}</dd></div>

@@ -60,6 +60,15 @@ _NUMERIC_TYPES = {
 
 _BOOLEAN_TYPES = {"BOOL", "BOOLEAN"}
 
+_NUMERIC_ARRAY_RE = re.compile(
+    r"ARRAY[<\[]("
+    r"FLOAT|FLOAT4|FLOAT8|FLOAT32|FLOAT64|"
+    r"DOUBLE|DOUBLE PRECISION|REAL|"
+    r"INT|INT2|INT4|INT8|INT16|INT32|INT64|INTEGER|BIGINT|SMALLINT|TINYINT|"
+    r"DECIMAL|NUMERIC|NUMBER"
+    r")[>\]]",
+)
+
 _TIMESTAMP_TYPES = {
     "DATE",
     "DATETIME",
@@ -90,10 +99,15 @@ def infer_feature_type(data_type: str | None) -> FeatureType | None:
     if normalized in _TIMESTAMP_TYPES:
         return FeatureType.TIMESTAMP
 
-    # Array / vector types — common patterns across warehouses. Match the
-    # prefix so ``ARRAY<FLOAT64>``, ``ARRAY[DOUBLE]``, ``VECTOR(768)``,
-    # etc. all land on embedding.
-    if normalized.startswith("ARRAY") or normalized.startswith("VECTOR"):
+    # Vector types are unambiguous — ``VECTOR(768)`` etc.
+    if normalized.startswith("VECTOR"):
+        return FeatureType.EMBEDDING
+
+    # Array types are only inferred as embedding when the element type is
+    # numeric (``ARRAY<FLOAT64>``, ``ARRAY[DOUBLE]``). A bare ``ARRAY``
+    # without element info or an ``ARRAY<STRING>`` is ambiguous and left
+    # unspecified.
+    if normalized.startswith("ARRAY") and _NUMERIC_ARRAY_RE.search(normalized):
         return FeatureType.EMBEDDING
 
     # VARCHAR / TEXT / STRING / CHAR intentionally not inferred — see module

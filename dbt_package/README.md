@@ -42,7 +42,7 @@ In your `packages.yml`:
 packages:
   - git: "https://github.com/gauthierpiarrette/dbt-features.git"
     subdirectory: "dbt_package"
-    revision: "v0.1.0"
+    revision: "v0.2.0"
 ```
 
 Then `dbt deps`.

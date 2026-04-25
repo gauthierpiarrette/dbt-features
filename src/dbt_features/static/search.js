@@ -79,7 +79,7 @@
   function navigateTo(li) {
     if (!li) return;
     const url = li.getAttribute("data-url");
-    if (url) window.location.href = url;
+    if (url) window.location.href = (window.SEARCH_BASE_URL || ".") + url;
   }
 
   function setActive(idx) {

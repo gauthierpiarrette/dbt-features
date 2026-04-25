@@ -10,8 +10,7 @@ A **feature catalog** for ML teams whose features live as dbt models.
 [**Live demo →**](https://gauthierpiarrette.github.io/dbt-features/) ·
 [Install](#install) ·
 [Schema](#metadata-schema) ·
-[Warehouse enrichment](#warehouse-enrichment-optional) ·
-[Spec](./specs.md)
+[Warehouse enrichment](#warehouse-enrichment-optional)
 
 > Not a data catalog. A feature catalog. The distinction is load-bearing.
 
@@ -36,8 +35,6 @@ It is intentionally:
 - **Static.** No backend, no auth, no infra to babysit.
 - **Single-purpose.** Not a feature store. Not drift detection. Not a
   general-purpose data catalog.
-
-See [`specs.md`](./specs.md) for the full motivation.
 
 ## Why not just dbt-docs?
 
@@ -480,8 +477,8 @@ The Snowflake adapter additionally tags every query with
 
 For compile-time validation (catch metadata typos in `dbt parse` rather
 than at catalog build time), install the companion dbt package — see
-[`dbt_package/`](./dbt_package). It ships a YAML schema and a `validate`
-macro you can wire into your project's tests.
+[`dbt_package/`](./dbt_package). It ships a `validate` macro you can wire
+into your project's tests.
 
 ## Development
 

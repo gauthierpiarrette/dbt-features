@@ -46,10 +46,20 @@ def test_timestamp_types(data_type: str) -> None:
 
 @pytest.mark.parametrize(
     "data_type",
-    ["ARRAY<FLOAT64>", "ARRAY[DOUBLE]", "ARRAY", "VECTOR(768)", "VECTOR"],
+    ["ARRAY<FLOAT64>", "ARRAY[DOUBLE]", "ARRAY<INT>", "VECTOR(768)", "VECTOR"],
 )
-def test_array_and_vector_types_map_to_embedding(data_type: str) -> None:
+def test_numeric_array_and_vector_types_map_to_embedding(data_type: str) -> None:
     assert infer_feature_type(data_type) == FeatureType.EMBEDDING
+
+
+@pytest.mark.parametrize(
+    "data_type",
+    ["ARRAY<STRING>", "ARRAY<VARCHAR>", "ARRAY", "ARRAY<STRUCT>"],
+)
+def test_non_numeric_array_types_left_unspecified(data_type: str) -> None:
+    """Only numeric arrays are clearly embeddings; others are ambiguous."""
+
+    assert infer_feature_type(data_type) is None
 
 
 @pytest.mark.parametrize("data_type", ["VARCHAR", "TEXT", "STRING", "CHAR", "VARCHAR(255)"])

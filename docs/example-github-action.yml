@@ -1,4 +1,4 @@
-# Reference workflow — NOT meant to run in this repo.
+# Reference workflow.
 #
 # Copy this file into your own dbt project at .github/workflows/feature-catalog.yml
 # (or any name you like). It builds the catalog on every push to main and publishes
