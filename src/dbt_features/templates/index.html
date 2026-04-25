@@ -7,6 +7,20 @@
     {{ catalog.feature_count }} feature{{ '' if catalog.feature_count == 1 else 's' }}.
     {% if catalog.all_tags %}Tagged: {% for tag in catalog.all_tags %}<a class="tag" href="#tag-{{ tag|slugify }}">{{ tag }}</a>{% if not loop.last %} {% endif %}{% endfor %}.{% endif %}
   </p>
+  {% if summary and catalog.feature_count %}
+  <div class="summary-bar">
+    {% for ftype, count in summary.type_counts.items() %}
+    <span class="summary-stat"><span class="pill pill-{{ ftype }}">{{ ftype }}</span> {{ count }}</span>
+    {% endfor %}
+    {% if summary.deprecated %}<span class="summary-stat"><span class="lifecycle lifecycle-deprecated">deprecated</span> {{ summary.deprecated }}</span>{% endif %}
+    {% if summary.preview %}<span class="summary-stat"><span class="lifecycle lifecycle-preview">preview</span> {{ summary.preview }}</span>{% endif %}
+    {% if summary.has_enrichment %}
+    {% if summary.fresh %}<span class="summary-stat"><span class="freshness-dot freshness-dot-fresh"></span> {{ summary.fresh }} fresh</span>{% endif %}
+    {% if summary.warn %}<span class="summary-stat"><span class="freshness-dot freshness-dot-warn"></span> {{ summary.warn }} warn</span>{% endif %}
+    {% if summary.error %}<span class="summary-stat"><span class="freshness-dot freshness-dot-error"></span> {{ summary.error }} stale</span>{% endif %}
+    {% endif %}
+  </div>
+  {% endif %}
 </section>
 
 {% if not catalog.feature_groups %}
@@ -39,6 +53,11 @@
         {% if group.owner %}<li><span class="kw">owner</span> {{ group.owner }}</li>{% endif %}
         {% if group.materialization %}<li><span class="kw">materialization</span> {{ group.materialization }}</li>{% endif %}
       </ul>
+      {% if type_bars.get(group.unique_id) %}
+      <div class="type-bar" title="Feature type distribution">
+        {% for seg in type_bars[group.unique_id] %}<span class="type-bar-seg type-bar-{{ seg.type }}" style="width:{{ seg.pct }}%" title="{{ seg.type }}: {{ seg.pct }}%"></span>{% endfor %}
+      </div>
+      {% endif %}
     </a>
     {% endfor %}
   </div>
