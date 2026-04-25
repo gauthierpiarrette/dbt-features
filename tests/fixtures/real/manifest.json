@@ -1,0 +1,835 @@
+{
+  "metadata": {
+    "adapter_type": "duckdb",
+    "dbt_schema_version": "https://schemas.getdbt.com/dbt/manifest/v12.json",
+    "dbt_version": "1.11.8",
+    "env": {},
+    "generated_at": "2026-04-25T14:32:00.775905Z",
+    "invocation_id": "2ea7522d-8664-4bb8-8357-4c12525365c5",
+    "invocation_started_at": "2026-04-25T14:31:40.117882+00:00",
+    "project_id": "0686928ccd29199219b5e9001a80438d",
+    "project_name": "jaffle_features",
+    "quoting": {
+      "column": null,
+      "database": true,
+      "identifier": true,
+      "schema": true
+    },
+    "run_started_at": "2026-04-25T14:31:40.118473+00:00",
+    "send_anonymous_usage_stats": true,
+    "user_id": "f59f8858-382a-4b3f-b674-fb929a6bfb46"
+  },
+  "nodes": {
+    "model.jaffle_features.consumer_dashboard_metrics": {
+      "access": "protected",
+      "alias": "consumer_dashboard_metrics",
+      "build_path": null,
+      "checksum": {
+        "checksum": "8bdcb77036f448de7094f6151f9ebe64cbe22b41170e8b8a6574bceee114abdd",
+        "name": "sha256"
+      },
+      "columns": {},
+      "compiled": true,
+      "compiled_code": "select\n    feature_date,\n    sum(orders_count_7d) as total_orders_7d\nfrom \"jaffle\".\"main\".\"customer_features_daily\"\ngroup by 1",
+      "compiled_path": "target/compiled/jaffle_features/models/metrics/consumer_dashboard_metrics.sql",
+      "config": {
+        "access": "protected",
+        "alias": null,
+        "batch_size": null,
+        "begin": null,
+        "column_types": {},
+        "concurrent_batches": null,
+        "contract": {
+          "alias_types": true,
+          "enforced": false
+        },
+        "database": null,
+        "docs": {
+          "node_color": null,
+          "show": true
+        },
+        "enabled": true,
+        "event_time": null,
+        "freshness": null,
+        "full_refresh": null,
+        "grants": {},
+        "group": null,
+        "incremental_strategy": null,
+        "lookback": 1,
+        "materialized": "table",
+        "meta": {},
+        "on_configuration_change": "apply",
+        "on_schema_change": "ignore",
+        "packages": [],
+        "persist_docs": {},
+        "post-hook": [],
+        "pre-hook": [],
+        "quoting": {},
+        "schema": null,
+        "tags": [],
+        "unique_key": null
+      },
+      "constraints": [],
+      "contract": {
+        "alias_types": true,
+        "checksum": null,
+        "enforced": false
+      },
+      "created_at": 1777127503.805706,
+      "database": "jaffle",
+      "depends_on": {
+        "macros": [],
+        "nodes": [
+          "model.jaffle_features.customer_features_daily"
+        ]
+      },
+      "deprecation_date": null,
+      "description": "",
+      "doc_blocks": [],
+      "docs": {
+        "node_color": null,
+        "show": true
+      },
+      "extra_ctes": [],
+      "extra_ctes_injected": true,
+      "fqn": [
+        "jaffle_features",
+        "metrics",
+        "consumer_dashboard_metrics"
+      ],
+      "functions": [],
+      "group": null,
+      "language": "sql",
+      "latest_version": null,
+      "meta": {},
+      "metrics": [],
+      "name": "consumer_dashboard_metrics",
+      "original_file_path": "models/metrics/consumer_dashboard_metrics.sql",
+      "package_name": "jaffle_features",
+      "patch_path": null,
+      "path": "metrics/consumer_dashboard_metrics.sql",
+      "primary_key": [],
+      "raw_code": "select\n    feature_date,\n    sum(orders_count_7d) as total_orders_7d\nfrom {{ ref('customer_features_daily') }}\ngroup by 1",
+      "refs": [
+        {
+          "name": "customer_features_daily",
+          "package": null,
+          "version": null
+        }
+      ],
+      "relation_name": "\"jaffle\".\"main\".\"consumer_dashboard_metrics\"",
+      "resource_type": "model",
+      "schema": "main",
+      "sources": [],
+      "tags": [],
+      "time_spine": null,
+      "unique_id": "model.jaffle_features.consumer_dashboard_metrics",
+      "unrendered_config": {
+        "materialized": "table"
+      },
+      "version": null
+    },
+    "model.jaffle_features.customer_features_daily": {
+      "access": "protected",
+      "alias": "customer_features_daily",
+      "build_path": null,
+      "checksum": {
+        "checksum": "1b1e343c3d9e331c1d9378fe9da086715efea607af9900c85857b04e82f08c39",
+        "name": "sha256"
+      },
+      "columns": {
+        "customer_id": {
+          "config": {
+            "meta": {
+              "feature_catalog": {
+                "feature_type": "identifier",
+                "is_feature": true
+              }
+            },
+            "tags": []
+          },
+          "constraints": [],
+          "data_type": null,
+          "description": "Customer identifier",
+          "doc_blocks": [],
+          "granularity": null,
+          "meta": {
+            "feature_catalog": {
+              "feature_type": "identifier",
+              "is_feature": true
+            }
+          },
+          "name": "customer_id",
+          "quote": null,
+          "tags": []
+        },
+        "feature_date": {
+          "config": {
+            "meta": {},
+            "tags": []
+          },
+          "constraints": [],
+          "data_type": null,
+          "description": "Date the features are computed for",
+          "doc_blocks": [],
+          "granularity": null,
+          "meta": {},
+          "name": "feature_date",
+          "quote": null,
+          "tags": []
+        },
+        "is_repeat_customer": {
+          "config": {
+            "meta": {
+              "feature_catalog": {
+                "feature_type": "boolean",
+                "is_feature": true,
+                "used_by": [
+                  "churn_model_v2"
+                ]
+              }
+            },
+            "tags": []
+          },
+          "constraints": [],
+          "data_type": null,
+          "description": "Has the customer ordered more than once",
+          "doc_blocks": [],
+          "granularity": null,
+          "meta": {
+            "feature_catalog": {
+              "feature_type": "boolean",
+              "is_feature": true,
+              "used_by": [
+                "churn_model_v2"
+              ]
+            }
+          },
+          "name": "is_repeat_customer",
+          "quote": null,
+          "tags": []
+        },
+        "orders_count_7d": {
+          "config": {
+            "meta": {
+              "feature_catalog": {
+                "feature_type": "numeric",
+                "is_feature": true,
+                "null_behavior": "zero",
+                "used_by": [
+                  "churn_model_v2",
+                  "ltv_model_v3"
+                ]
+              }
+            },
+            "tags": []
+          },
+          "constraints": [],
+          "data_type": null,
+          "description": "Number of orders in the trailing 7 days",
+          "doc_blocks": [],
+          "granularity": null,
+          "meta": {
+            "feature_catalog": {
+              "feature_type": "numeric",
+              "is_feature": true,
+              "null_behavior": "zero",
+              "used_by": [
+                "churn_model_v2",
+                "ltv_model_v3"
+              ]
+            }
+          },
+          "name": "orders_count_7d",
+          "quote": null,
+          "tags": []
+        }
+      },
+      "compiled": true,
+      "compiled_code": "with dates as (\n    select distinct order_date as feature_date from \"jaffle\".\"main\".\"stg_orders\"\n),\ncustomers as (\n    select distinct customer_id from \"jaffle\".\"main\".\"stg_orders\"\n),\ngrid as (\n    select c.customer_id, d.feature_date\n    from customers c cross join dates d\n)\nselect\n    g.feature_date,\n    g.customer_id,\n    coalesce(count(o.order_id), 0) as orders_count_7d,\n    coalesce(count(o.order_id), 0) > 1 as is_repeat_customer\nfrom grid g\nleft join \"jaffle\".\"main\".\"stg_orders\" o\n  on o.customer_id = g.customer_id\n and o.order_date between g.feature_date - interval 7 day and g.feature_date\ngroup by 1, 2",
+      "compiled_path": "target/compiled/jaffle_features/models/features/customer_features_daily.sql",
+      "config": {
+        "access": "protected",
+        "alias": null,
+        "batch_size": null,
+        "begin": null,
+        "column_types": {},
+        "concurrent_batches": null,
+        "contract": {
+          "alias_types": true,
+          "enforced": false
+        },
+        "database": null,
+        "docs": {
+          "node_color": null,
+          "show": true
+        },
+        "enabled": true,
+        "event_time": null,
+        "freshness": null,
+        "full_refresh": null,
+        "grants": {},
+        "group": null,
+        "incremental_strategy": null,
+        "lookback": 1,
+        "materialized": "table",
+        "meta": {
+          "feature_catalog": {
+            "entity": "customer_id",
+            "freshness": {
+              "error_after": {
+                "count": 48,
+                "period": "hour"
+              },
+              "warn_after": {
+                "count": 36,
+                "period": "hour"
+              }
+            },
+            "grain": [
+              "feature_date",
+              "customer_id"
+            ],
+            "is_feature_table": true,
+            "owner": "growth-team@jaffle.com",
+            "tags": [
+              "customer",
+              "daily"
+            ],
+            "timestamp_column": "feature_date"
+          }
+        },
+        "on_configuration_change": "apply",
+        "on_schema_change": "ignore",
+        "packages": [],
+        "persist_docs": {},
+        "post-hook": [],
+        "pre-hook": [],
+        "quoting": {},
+        "schema": null,
+        "tags": [],
+        "unique_key": null
+      },
+      "constraints": [],
+      "contract": {
+        "alias_types": true,
+        "checksum": null,
+        "enforced": false
+      },
+      "created_at": 1777127504.368542,
+      "database": "jaffle",
+      "depends_on": {
+        "macros": [],
+        "nodes": [
+          "model.jaffle_features.stg_orders"
+        ]
+      },
+      "deprecation_date": null,
+      "description": "Daily booking-related features per customer",
+      "doc_blocks": [],
+      "docs": {
+        "node_color": null,
+        "show": true
+      },
+      "extra_ctes": [],
+      "extra_ctes_injected": true,
+      "fqn": [
+        "jaffle_features",
+        "features",
+        "customer_features_daily"
+      ],
+      "functions": [],
+      "group": null,
+      "language": "sql",
+      "latest_version": null,
+      "meta": {
+        "feature_catalog": {
+          "entity": "customer_id",
+          "freshness": {
+            "error_after": {
+              "count": 48,
+              "period": "hour"
+            },
+            "warn_after": {
+              "count": 36,
+              "period": "hour"
+            }
+          },
+          "grain": [
+            "feature_date",
+            "customer_id"
+          ],
+          "is_feature_table": true,
+          "owner": "growth-team@jaffle.com",
+          "tags": [
+            "customer",
+            "daily"
+          ],
+          "timestamp_column": "feature_date"
+        }
+      },
+      "metrics": [],
+      "name": "customer_features_daily",
+      "original_file_path": "models/features/customer_features_daily.sql",
+      "package_name": "jaffle_features",
+      "patch_path": "jaffle_features://models/features/_features.yml",
+      "path": "features/customer_features_daily.sql",
+      "primary_key": [],
+      "raw_code": "with dates as (\n    select distinct order_date as feature_date from {{ ref('stg_orders') }}\n),\ncustomers as (\n    select distinct customer_id from {{ ref('stg_orders') }}\n),\ngrid as (\n    select c.customer_id, d.feature_date\n    from customers c cross join dates d\n)\nselect\n    g.feature_date,\n    g.customer_id,\n    coalesce(count(o.order_id), 0) as orders_count_7d,\n    coalesce(count(o.order_id), 0) > 1 as is_repeat_customer\nfrom grid g\nleft join {{ ref('stg_orders') }} o\n  on o.customer_id = g.customer_id\n and o.order_date between g.feature_date - interval 7 day and g.feature_date\ngroup by 1, 2",
+      "refs": [
+        {
+          "name": "stg_orders",
+          "package": null,
+          "version": null
+        },
+        {
+          "name": "stg_orders",
+          "package": null,
+          "version": null
+        },
+        {
+          "name": "stg_orders",
+          "package": null,
+          "version": null
+        }
+      ],
+      "relation_name": "\"jaffle\".\"main\".\"customer_features_daily\"",
+      "resource_type": "model",
+      "schema": "main",
+      "sources": [],
+      "tags": [],
+      "time_spine": null,
+      "unique_id": "model.jaffle_features.customer_features_daily",
+      "unrendered_config": {
+        "materialized": "table",
+        "meta": {
+          "feature_catalog": {
+            "entity": "customer_id",
+            "freshness": {
+              "error_after": {
+                "count": 48,
+                "period": "hour"
+              },
+              "warn_after": {
+                "count": 36,
+                "period": "hour"
+              }
+            },
+            "grain": [
+              "feature_date",
+              "customer_id"
+            ],
+            "is_feature_table": true,
+            "owner": "growth-team@jaffle.com",
+            "tags": [
+              "customer",
+              "daily"
+            ],
+            "timestamp_column": "feature_date"
+          }
+        }
+      },
+      "version": null
+    },
+    "model.jaffle_features.customer_features_lifetime": {
+      "access": "protected",
+      "alias": "customer_features_lifetime",
+      "build_path": null,
+      "checksum": {
+        "checksum": "73833e393f5eefaa7c8d4ce8827bf55448b07a6a12f1a15632dd494c1851fe51",
+        "name": "sha256"
+      },
+      "columns": {
+        "customer_id": {
+          "config": {
+            "meta": {
+              "feature_catalog": {
+                "feature_type": "identifier",
+                "is_feature": true
+              }
+            },
+            "tags": []
+          },
+          "constraints": [],
+          "data_type": null,
+          "description": "Customer identifier",
+          "doc_blocks": [],
+          "granularity": null,
+          "meta": {
+            "feature_catalog": {
+              "feature_type": "identifier",
+              "is_feature": true
+            }
+          },
+          "name": "customer_id",
+          "quote": null,
+          "tags": []
+        },
+        "lifetime_order_count": {
+          "config": {
+            "meta": {
+              "feature_catalog": {
+                "feature_type": "numeric",
+                "is_feature": true,
+                "null_behavior": "zero",
+                "used_by": [
+                  "ltv_model_v3"
+                ]
+              }
+            },
+            "tags": []
+          },
+          "constraints": [],
+          "data_type": null,
+          "description": "All-time order count for this customer",
+          "doc_blocks": [],
+          "granularity": null,
+          "meta": {
+            "feature_catalog": {
+              "feature_type": "numeric",
+              "is_feature": true,
+              "null_behavior": "zero",
+              "used_by": [
+                "ltv_model_v3"
+              ]
+            }
+          },
+          "name": "lifetime_order_count",
+          "quote": null,
+          "tags": []
+        }
+      },
+      "compiled": true,
+      "compiled_code": "select\n    customer_id,\n    count(*) as lifetime_order_count\nfrom \"jaffle\".\"main\".\"stg_orders\"\ngroup by 1",
+      "compiled_path": "target/compiled/jaffle_features/models/features/customer_features_lifetime.sql",
+      "config": {
+        "access": "protected",
+        "alias": null,
+        "batch_size": null,
+        "begin": null,
+        "column_types": {},
+        "concurrent_batches": null,
+        "contract": {
+          "alias_types": true,
+          "enforced": false
+        },
+        "database": null,
+        "docs": {
+          "node_color": null,
+          "show": true
+        },
+        "enabled": true,
+        "event_time": null,
+        "freshness": null,
+        "full_refresh": null,
+        "grants": {},
+        "group": null,
+        "incremental_strategy": null,
+        "lookback": 1,
+        "materialized": "table",
+        "meta": {
+          "feature_catalog": {
+            "entity": [
+              "customer_id"
+            ],
+            "grain": [
+              "customer_id"
+            ],
+            "is_feature_table": true,
+            "owner": "growth-team@jaffle.com",
+            "tags": [
+              "customer",
+              "lifetime"
+            ]
+          }
+        },
+        "on_configuration_change": "apply",
+        "on_schema_change": "ignore",
+        "packages": [],
+        "persist_docs": {},
+        "post-hook": [],
+        "pre-hook": [],
+        "quoting": {},
+        "schema": null,
+        "tags": [],
+        "unique_key": null
+      },
+      "constraints": [],
+      "contract": {
+        "alias_types": true,
+        "checksum": null,
+        "enforced": false
+      },
+      "created_at": 1777127504.375116,
+      "database": "jaffle",
+      "depends_on": {
+        "macros": [],
+        "nodes": [
+          "model.jaffle_features.stg_orders"
+        ]
+      },
+      "deprecation_date": null,
+      "description": "Lifetime features per customer (slowly changing)",
+      "doc_blocks": [],
+      "docs": {
+        "node_color": null,
+        "show": true
+      },
+      "extra_ctes": [],
+      "extra_ctes_injected": true,
+      "fqn": [
+        "jaffle_features",
+        "features",
+        "customer_features_lifetime"
+      ],
+      "functions": [],
+      "group": null,
+      "language": "sql",
+      "latest_version": null,
+      "meta": {
+        "feature_catalog": {
+          "entity": [
+            "customer_id"
+          ],
+          "grain": [
+            "customer_id"
+          ],
+          "is_feature_table": true,
+          "owner": "growth-team@jaffle.com",
+          "tags": [
+            "customer",
+            "lifetime"
+          ]
+        }
+      },
+      "metrics": [],
+      "name": "customer_features_lifetime",
+      "original_file_path": "models/features/customer_features_lifetime.sql",
+      "package_name": "jaffle_features",
+      "patch_path": "jaffle_features://models/features/_features.yml",
+      "path": "features/customer_features_lifetime.sql",
+      "primary_key": [],
+      "raw_code": "select\n    customer_id,\n    count(*) as lifetime_order_count\nfrom {{ ref('stg_orders') }}\ngroup by 1",
+      "refs": [
+        {
+          "name": "stg_orders",
+          "package": null,
+          "version": null
+        }
+      ],
+      "relation_name": "\"jaffle\".\"main\".\"customer_features_lifetime\"",
+      "resource_type": "model",
+      "schema": "main",
+      "sources": [],
+      "tags": [],
+      "time_spine": null,
+      "unique_id": "model.jaffle_features.customer_features_lifetime",
+      "unrendered_config": {
+        "materialized": "table",
+        "meta": {
+          "feature_catalog": {
+            "entity": [
+              "customer_id"
+            ],
+            "grain": [
+              "customer_id"
+            ],
+            "is_feature_table": true,
+            "owner": "growth-team@jaffle.com",
+            "tags": [
+              "customer",
+              "lifetime"
+            ]
+          }
+        }
+      },
+      "version": null
+    },
+    "model.jaffle_features.stg_orders": {
+      "access": "protected",
+      "alias": "stg_orders",
+      "build_path": null,
+      "checksum": {
+        "checksum": "f916dd32a05fa9a844b4cd53f50b1fdac0dc329725bdc352f426ed03a2ed870e",
+        "name": "sha256"
+      },
+      "columns": {},
+      "compiled": true,
+      "compiled_code": "select\n    order_id,\n    customer_id,\n    cast(order_ts as date) as order_date,\n    amount\nfrom \"jaffle\".\"main\".\"raw_orders\"",
+      "compiled_path": "target/compiled/jaffle_features/models/staging/stg_orders.sql",
+      "config": {
+        "access": "protected",
+        "alias": null,
+        "batch_size": null,
+        "begin": null,
+        "column_types": {},
+        "concurrent_batches": null,
+        "contract": {
+          "alias_types": true,
+          "enforced": false
+        },
+        "database": null,
+        "docs": {
+          "node_color": null,
+          "show": true
+        },
+        "enabled": true,
+        "event_time": null,
+        "freshness": null,
+        "full_refresh": null,
+        "grants": {},
+        "group": null,
+        "incremental_strategy": null,
+        "lookback": 1,
+        "materialized": "table",
+        "meta": {},
+        "on_configuration_change": "apply",
+        "on_schema_change": "ignore",
+        "packages": [],
+        "persist_docs": {},
+        "post-hook": [],
+        "pre-hook": [],
+        "quoting": {},
+        "schema": null,
+        "tags": [],
+        "unique_key": null
+      },
+      "constraints": [],
+      "contract": {
+        "alias_types": true,
+        "checksum": null,
+        "enforced": false
+      },
+      "created_at": 1777127503.8537788,
+      "database": "jaffle",
+      "depends_on": {
+        "macros": [],
+        "nodes": [
+          "seed.jaffle_features.raw_orders"
+        ]
+      },
+      "deprecation_date": null,
+      "description": "",
+      "doc_blocks": [],
+      "docs": {
+        "node_color": null,
+        "show": true
+      },
+      "extra_ctes": [],
+      "extra_ctes_injected": true,
+      "fqn": [
+        "jaffle_features",
+        "staging",
+        "stg_orders"
+      ],
+      "functions": [],
+      "group": null,
+      "language": "sql",
+      "latest_version": null,
+      "meta": {},
+      "metrics": [],
+      "name": "stg_orders",
+      "original_file_path": "models/staging/stg_orders.sql",
+      "package_name": "jaffle_features",
+      "patch_path": null,
+      "path": "staging/stg_orders.sql",
+      "primary_key": [],
+      "raw_code": "select\n    order_id,\n    customer_id,\n    cast(order_ts as date) as order_date,\n    amount\nfrom {{ ref('raw_orders') }}",
+      "refs": [
+        {
+          "name": "raw_orders",
+          "package": null,
+          "version": null
+        }
+      ],
+      "relation_name": "\"jaffle\".\"main\".\"stg_orders\"",
+      "resource_type": "model",
+      "schema": "main",
+      "sources": [],
+      "tags": [],
+      "time_spine": null,
+      "unique_id": "model.jaffle_features.stg_orders",
+      "unrendered_config": {
+        "materialized": "table"
+      },
+      "version": null
+    },
+    "seed.jaffle_features.raw_orders": {
+      "alias": "raw_orders",
+      "build_path": null,
+      "checksum": {
+        "checksum": "f8a71c8b562c07b39296daa6ff231421d8c1107ff21575dbcaf3deddbf0f93f3",
+        "name": "sha256"
+      },
+      "columns": {},
+      "config": {
+        "alias": null,
+        "batch_size": null,
+        "begin": null,
+        "column_types": {},
+        "concurrent_batches": null,
+        "contract": {
+          "alias_types": true,
+          "enforced": false
+        },
+        "database": null,
+        "delimiter": ",",
+        "docs": {
+          "node_color": null,
+          "show": true
+        },
+        "enabled": true,
+        "event_time": null,
+        "full_refresh": null,
+        "grants": {},
+        "group": null,
+        "incremental_strategy": null,
+        "lookback": 1,
+        "materialized": "seed",
+        "meta": {},
+        "on_configuration_change": "apply",
+        "on_schema_change": "ignore",
+        "packages": [],
+        "persist_docs": {},
+        "post-hook": [],
+        "pre-hook": [],
+        "quote_columns": null,
+        "quoting": {},
+        "schema": null,
+        "tags": [],
+        "unique_key": null
+      },
+      "created_at": 1777127504.181082,
+      "database": "jaffle",
+      "depends_on": {
+        "macros": []
+      },
+      "description": "",
+      "doc_blocks": [],
+      "docs": {
+        "node_color": null,
+        "show": true
+      },
+      "fqn": [
+        "jaffle_features",
+        "raw_orders"
+      ],
+      "group": null,
+      "meta": {},
+      "name": "raw_orders",
+      "original_file_path": "seeds/raw_orders.csv",
+      "package_name": "jaffle_features",
+      "patch_path": null,
+      "path": "raw_orders.csv",
+      "raw_code": "",
+      "relation_name": "\"jaffle\".\"main\".\"raw_orders\"",
+      "resource_type": "seed",
+      "root_path": "/Users/gotobe/dbt-feature-catalog/examples/jaffle_shop_features",
+      "schema": "main",
+      "tags": [],
+      "unique_id": "seed.jaffle_features.raw_orders",
+      "unrendered_config": {}
+    }
+  },
+  "sources": {}
+}

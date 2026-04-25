@@ -38,6 +38,34 @@ pytest
 - Re-introducing a CDN dependency for the lineage page (or any other view).
   Mermaid is bundled locally on purpose — see below.
 
+## Regenerating the real-manifest fixture
+
+`tests/fixtures/real/manifest.json` is a real `dbt parse` output captured
+from the bundled example project, pruned to the keys our parser reads.
+Regenerate when bumping the supported-dbt floor or when introducing new
+schema fields:
+
+```bash
+pip install dbt-duckdb           # only needed to regenerate the fixture
+cd examples/jaffle_shop_features
+DBT_PROFILES_DIR=. dbt seed
+DBT_PROFILES_DIR=. dbt run
+DBT_PROFILES_DIR=. dbt docs generate
+
+# Copy + prune
+cp target/manifest.json ../../tests/fixtures/real/
+cp target/catalog.json ../../tests/fixtures/real/
+
+python - <<'PY'
+import json
+m = json.load(open('../../tests/fixtures/real/manifest.json'))
+keep = {'metadata': m['metadata'], 'nodes': m['nodes'], 'sources': m.get('sources', {})}
+json.dump(keep, open('../../tests/fixtures/real/manifest.json', 'w'), indent=2, sort_keys=True)
+PY
+
+rm -rf target dbt_packages logs *.duckdb*
+```
+
 ## Updating the bundled Mermaid
 
 The lineage view uses [Mermaid](https://github.com/mermaid-js/mermaid),

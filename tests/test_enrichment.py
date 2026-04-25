@@ -50,7 +50,10 @@ demo:
         )
         profile = load_profile("demo", profiles_dir=tmp_path)
         assert profile["type"] == "duckdb"
-        assert profile["path"] == "./demo.duckdb"
+        # Relative DuckDB paths get resolved against the profiles dir so
+        # invocations from outside the project dir don't break with a
+        # confusing "database does not exist" error.
+        assert profile["path"] == str((tmp_path / "demo.duckdb").resolve())
 
     def test_explicit_target_override(self, tmp_path: Path) -> None:
         _write_profiles(
@@ -68,7 +71,58 @@ demo:
 """,
         )
         profile = load_profile("demo", target="prod", profiles_dir=tmp_path)
-        assert profile["path"] == "./prod.duckdb"
+        assert profile["path"] == str((tmp_path / "prod.duckdb").resolve())
+
+    def test_absolute_duckdb_path_left_alone(self, tmp_path: Path) -> None:
+        """Absolute paths should not be re-resolved."""
+
+        abs_path = (tmp_path / "external.duckdb").resolve()
+        _write_profiles(
+            tmp_path,
+            f"""
+demo:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: {abs_path}
+""",
+        )
+        profile = load_profile("demo", profiles_dir=tmp_path)
+        assert profile["path"] == str(abs_path)
+
+    def test_in_memory_duckdb_left_alone(self, tmp_path: Path) -> None:
+        _write_profiles(
+            tmp_path,
+            """
+demo:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: ":memory:"
+""",
+        )
+        profile = load_profile("demo", profiles_dir=tmp_path)
+        assert profile["path"] == ":memory:"
+
+    def test_non_duckdb_paths_not_rewritten(self, tmp_path: Path) -> None:
+        """Postgres profiles use ``host`` (not a path) — must not be touched."""
+
+        _write_profiles(
+            tmp_path,
+            """
+demo:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: warehouse.example.com
+      dbname: prod
+""",
+        )
+        profile = load_profile("demo", profiles_dir=tmp_path)
+        assert profile["host"] == "warehouse.example.com"
 
     def test_missing_profile_raises(self, tmp_path: Path) -> None:
         _write_profiles(

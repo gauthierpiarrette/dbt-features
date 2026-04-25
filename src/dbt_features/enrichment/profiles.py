@@ -90,7 +90,37 @@ def load_profile(
             f"profile '{profile_name}' target '{chosen_target}' missing required 'type' field."
         )
 
-    return _render_env_vars(raw)
+    rendered = _render_env_vars(raw)
+    return _resolve_relative_paths(rendered, profiles_dir)
+
+
+def _resolve_relative_paths(profile: dict[str, Any], profiles_dir: Path) -> dict[str, Any]:
+    """Resolve filesystem-path fields against the profiles directory.
+
+    DuckDB's ``path`` is the obvious case (the .duckdb file lives next to
+    profiles.yml in our example, and many users do the same). Without this,
+    invoking the tool from outside the project dir breaks with a confusing
+    "database does not exist" error.
+
+    Other warehouses don't have path-shaped fields in their profiles, so
+    this is a no-op for them. We special-case DuckDB rather than walking
+    every value because we don't want to accidentally rewrite a hostname
+    that happens to look path-like.
+    """
+
+    if profile.get("type") != "duckdb":
+        return profile
+
+    path = profile.get("path")
+    if not path or path == ":memory:":
+        return profile
+    p = Path(path)
+    if p.is_absolute():
+        return profile
+
+    profile = dict(profile)
+    profile["path"] = str((profiles_dir / p).resolve())
+    return profile
 
 
 _ENV_VAR_RE = re.compile(
