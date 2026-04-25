@@ -35,10 +35,27 @@ from dbt_features.catalog import (
     FeatureGroup,
     LineageRef,
 )
+from dbt_features.enrichment.format import (
+    compute_freshness_status,
+    humanize_count,
+    humanize_percent,
+)
+from dbt_features.enrichment.models import FreshnessSnapshot
 
 
-def render_catalog(catalog: Catalog, output_dir: str | Path) -> Path:
+def render_catalog(
+    catalog: Catalog,
+    output_dir: str | Path,
+    *,
+    enrichment: dict[str, FreshnessSnapshot] | None = None,
+) -> Path:
     """Render ``catalog`` to ``output_dir``. Returns the output directory.
+
+    ``enrichment`` is an optional map of ``unique_id -> FreshnessSnapshot``
+    produced by the enrichment subsystem. When present, templates render
+    actual freshness, row counts, and per-column stats. When absent (the
+    default), they fall back to declared metadata only — no warehouse
+    facts, no broken UI.
 
     Idempotent: clears the output directory before writing. Refusing to
     write into a non-empty directory that wasn't created by us is a CLI
@@ -47,6 +64,7 @@ def render_catalog(catalog: Catalog, output_dir: str | Path) -> Path:
 
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
+    enrichment = enrichment or {}
 
     env = _make_env()
 
@@ -58,6 +76,7 @@ def render_catalog(catalog: Catalog, output_dir: str | Path) -> Path:
         groups_by_tag=catalog.feature_groups_by_tag(),
         page_title=catalog.project_name,
         base_url=".",
+        enrichment=enrichment,
     )
     (output / "index.html").write_text(index_html, encoding="utf-8")
 
@@ -66,13 +85,14 @@ def render_catalog(catalog: Catalog, output_dir: str | Path) -> Path:
         page_title=f"Lineage — {catalog.project_name}",
         base_url=".",
         mermaid_source=_lineage_mermaid(catalog),
+        enrichment=enrichment,
     )
     (output / "lineage.html").write_text(lineage_html, encoding="utf-8")
 
     groups_dir = output / "groups"
     groups_dir.mkdir(exist_ok=True)
     for group in catalog.feature_groups:
-        _render_group(env, catalog, group, groups_dir)
+        _render_group(env, catalog, group, groups_dir, enrichment)
 
     return output
 
@@ -84,10 +104,7 @@ def _make_env() -> Environment:
         trim_blocks=True,
         lstrip_blocks=True,
     )
-    env.globals["slugify"] = slugify
-    env.globals["group_url"] = _group_url
-    env.globals["feature_url"] = _feature_url
-    env.filters["slugify"] = slugify
+    _register_globals(env)
     return env
 
 
@@ -104,14 +121,29 @@ def make_dev_env(template_dir: str | Path) -> Environment:
         trim_blocks=True,
         lstrip_blocks=True,
     )
-    env.globals["slugify"] = slugify
-    env.globals["group_url"] = _group_url
-    env.globals["feature_url"] = _feature_url
-    env.filters["slugify"] = slugify
+    _register_globals(env)
     return env
 
 
-def _render_group(env: Environment, catalog: Catalog, group: FeatureGroup, groups_dir: Path) -> None:
+def _register_globals(env: Environment) -> None:
+    env.globals["slugify"] = slugify
+    env.globals["group_url"] = _group_url
+    env.globals["feature_url"] = _feature_url
+    env.globals["freshness_status"] = compute_freshness_status
+    env.globals["humanize_count"] = humanize_count
+    env.globals["humanize_percent"] = humanize_percent
+    env.filters["slugify"] = slugify
+    env.filters["humanize_count"] = humanize_count
+    env.filters["humanize_percent"] = humanize_percent
+
+
+def _render_group(
+    env: Environment,
+    catalog: Catalog,
+    group: FeatureGroup,
+    groups_dir: Path,
+    enrichment: dict[str, FreshnessSnapshot],
+) -> None:
     group_slug = slugify(group.name)
     gdir = groups_dir / group_slug
     gdir.mkdir(parents=True, exist_ok=True)
@@ -120,6 +152,7 @@ def _render_group(env: Environment, catalog: Catalog, group: FeatureGroup, group
     # level used_by, since these are typically ML models that won't appear
     # in dbt lineage.
     declared_consumers = sorted({c for f in group.features for c in f.used_by})
+    snapshot = enrichment.get(group.unique_id)
 
     html = env.get_template("feature_group.html").render(
         catalog=catalog,
@@ -127,18 +160,24 @@ def _render_group(env: Environment, catalog: Catalog, group: FeatureGroup, group
         declared_consumers=declared_consumers,
         page_title=f"{group.name} — {catalog.project_name}",
         base_url="../..",
+        enrichment=enrichment,
+        snapshot=snapshot,
     )
     (gdir / "index.html").write_text(html, encoding="utf-8")
 
     fdir = gdir / "features"
     fdir.mkdir(exist_ok=True)
     for feature in group.features:
+        column_stats = snapshot.columns.get(feature.name) if snapshot else None
         fhtml = env.get_template("feature.html").render(
             catalog=catalog,
             group=group,
             feature=feature,
             page_title=f"{feature.name} — {group.name}",
             base_url="../../../..",
+            enrichment=enrichment,
+            snapshot=snapshot,
+            column_stats=column_stats,
         )
         (fdir / f"{slugify(feature.name)}.html").write_text(fhtml, encoding="utf-8")
 

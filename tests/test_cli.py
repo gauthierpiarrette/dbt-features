@@ -131,6 +131,28 @@ def test_version_flag() -> None:
     assert "dbt-features" in result.output
 
 
+def test_demo_synthesizes_enrichment() -> None:
+    """The demo command must produce realistic-looking warehouse stats
+    so screenshots show the freshness UI."""
+
+    from dbt_features.cli import _synthesize_demo_enrichment
+    from dbt_features.demo import demo_manifest_path
+    from dbt_features.parser import parse_project
+
+    cat = parse_project(demo_manifest_path().parent.parent, manifest_path=demo_manifest_path())
+    enrichment = _synthesize_demo_enrichment(cat)
+
+    # One snapshot per group
+    assert set(enrichment.keys()) == {g.unique_id for g in cat.feature_groups}
+    # Each snapshot has plausible content
+    for g in cat.feature_groups:
+        snap = enrichment[g.unique_id]
+        assert snap.row_count > 0
+        # All feature columns covered
+        for f in g.features:
+            assert f.name in snap.columns
+
+
 def test_demo_data_is_valid() -> None:
     """The bundled demo manifest must always parse cleanly. If this breaks,
     `dbt-features demo` is broken for every user."""

@@ -25,6 +25,27 @@
   {% endif %}
 </section>
 
+{% if snapshot %}
+{% set status = freshness_status(snapshot, group.freshness) %}
+<section class="freshness-banner freshness-{{ status.label }}">
+  <div class="freshness-headline">
+    <span class="freshness-dot freshness-dot-{{ status.label }}"></span>
+    <strong>
+      {% if status.label == 'fresh' %}Fresh
+      {% elif status.label == 'warn' %}Warning — past warn threshold
+      {% elif status.label == 'error' %}Stale — past error threshold
+      {% elif status.label == 'unknown' %}Status unknown
+      {% endif %}
+    </strong>
+    {% if snapshot.error %}
+    <span class="muted">{{ snapshot.error }}</span>
+    {% else %}
+    <span class="muted">last updated {{ status.age_human }}</span>
+    {% endif %}
+  </div>
+</section>
+{% endif %}
+
 <section class="kv-grid">
   <div><dt>Fully qualified</dt><dd><code>{{ group.fully_qualified_name }}</code></dd></div>
   {% if group.entity_columns %}<div><dt>Entity</dt><dd>{% for c in group.entity_columns %}<code>{{ c }}</code>{% if not loop.last %}, {% endif %}{% endfor %}</dd></div>{% endif %}
@@ -37,6 +58,12 @@
     {% if group.freshness.warn_after and group.freshness.error_after %} · {% endif %}
     {% if group.freshness.error_after %}error after {{ group.freshness.error_after.count }} {{ group.freshness.error_after.period.value }}s{% endif %}
   </dd></div>
+  {% endif %}
+  {% if snapshot and snapshot.max_timestamp %}
+  <div><dt>Last update</dt><dd>{{ snapshot.max_timestamp.strftime('%Y-%m-%d %H:%M UTC') }}</dd></div>
+  {% endif %}
+  {% if snapshot and snapshot.row_count is not none %}
+  <div><dt>Row count</dt><dd>{{ snapshot.row_count|humanize_count }}</dd></div>
   {% endif %}
   <div><dt>Source file</dt><dd><code>{{ group.file_path }}</code></dd></div>
 </section>
@@ -52,6 +79,7 @@
         <th>Name</th>
         <th>Type</th>
         <th>Column type</th>
+        {% if snapshot %}<th>Null %</th><th>Distinct</th>{% endif %}
         <th>Null behavior</th>
         <th>Status</th>
         <th>Declared ML consumers</th>
@@ -59,6 +87,7 @@
     </thead>
     <tbody>
       {% for feature in group.features %}
+      {% set col_stats = snapshot.columns.get(feature.name) if snapshot else None %}
       <tr class="{% if feature.lifecycle.value == 'deprecated' %}row-deprecated{% endif %}">
         <td><a href="{{ feature_url(group, feature, base_url=base_url) }}"><code>{{ feature.name }}</code></a>
           {% if feature.definition_version > 1 %}<span class="badge badge-version">v{{ feature.definition_version }}</span>{% endif %}
@@ -66,6 +95,10 @@
         </td>
         <td>{% if feature.feature_type %}<span class="pill pill-{{ feature.feature_type.value }}">{{ feature.feature_type.value }}</span>{% else %}—{% endif %}</td>
         <td>{% if feature.column_type %}<code>{{ feature.column_type }}</code>{% else %}—{% endif %}</td>
+        {% if snapshot %}
+        <td class="numeric">{% if col_stats %}{{ humanize_percent(col_stats.null_count, snapshot.row_count) }}{% else %}—{% endif %}</td>
+        <td class="numeric">{% if col_stats and col_stats.distinct_count is not none %}{{ col_stats.distinct_count|humanize_count }}{% else %}—{% endif %}</td>
+        {% endif %}
         <td>{% if feature.null_behavior %}{{ feature.null_behavior.value }}{% else %}—{% endif %}</td>
         <td>{% if feature.lifecycle.value != 'active' %}<span class="lifecycle lifecycle-{{ feature.lifecycle.value }}">{{ feature.lifecycle.value }}</span>{% else %}—{% endif %}</td>
         <td>{% if feature.used_by %}{% for u in feature.used_by %}<code>{{ u }}</code>{% if not loop.last %}, {% endif %}{% endfor %}{% else %}—{% endif %}</td>

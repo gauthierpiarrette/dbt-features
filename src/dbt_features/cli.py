@@ -131,20 +131,17 @@ def build(
         _safe_clear(output)
     output.mkdir(parents=True, exist_ok=True)
 
-    # Run warehouse enrichment first so the renderer can consume the data
-    # in a later step (3.2 wires this into the templates).
-    if connection_profile:
-        _run_enrichment(
-            catalog,
-            output=output,
-            profile_name=connection_profile,
-            target=connection_target,
-            profiles_dir=profiles_dir,
-            cache_ttl=cache_ttl,
-            use_cache=not no_cache,
-        )
+    enrichment = _resolve_enrichment(
+        catalog,
+        output=output,
+        profile_name=connection_profile,
+        target=connection_target,
+        profiles_dir=profiles_dir,
+        cache_ttl=cache_ttl,
+        use_cache=not no_cache,
+    )
 
-    render_catalog(catalog, output)
+    render_catalog(catalog, output, enrichment=enrichment)
 
     click.echo(
         f"Built catalog: {len(catalog.feature_groups)} feature group(s), "
@@ -152,22 +149,24 @@ def build(
     )
 
 
-def _run_enrichment(
+def _resolve_enrichment(
     catalog: object,
     *,
     output: Path,
-    profile_name: str,
+    profile_name: str | None,
     target: str | None,
     profiles_dir: Path | None,
     cache_ttl: int,
     use_cache: bool,
-) -> None:
-    """Fetch warehouse stats and persist to the cache file.
+) -> dict[str, object] | None:
+    """Decide what enrichment data (if any) the renderer should consume.
 
-    Kept as a thin shim so the CLI command stays readable. Translates
-    ``EnrichmentError`` to a friendly ``ClickException`` and surfaces
-    a per-group failure summary so the user sees how many tables
-    actually responded.
+    Three paths:
+      - ``--connection`` set → query/refresh and write cache.
+      - ``--connection`` unset but a fresh cache exists → reuse it. This
+        keeps the rendered site stable across a build that forgot to pass
+        ``--connection``, instead of silently dropping freshness UI.
+      - Otherwise → no enrichment. The renderer falls back gracefully.
     """
 
     from dbt_features.enrichment import (
@@ -177,6 +176,22 @@ def _run_enrichment(
     )
 
     cache_path = output / ".cache" / "enrichment.json"
+
+    if profile_name is None:
+        # Cache-only mode: read whatever's there. Missing/expired/corrupt
+        # cache returns None — the renderer falls back to no enrichment.
+        if not use_cache:
+            return None
+        cache = EnrichmentCache(cache_path, ttl_seconds=cache_ttl)
+        cached = cache.read()
+        if cached is None:
+            return None
+        click.echo(
+            f"Enrichment: reusing cached data for {len(cached)} feature group(s) "
+            f"(no --connection passed; pass it to refresh)."
+        )
+        return cached  # type: ignore[return-value]
+
     cache = EnrichmentCache(cache_path, ttl_seconds=cache_ttl) if use_cache else None
     if not use_cache and cache_path.exists():
         cache_path.unlink()
@@ -201,6 +216,7 @@ def _run_enrichment(
     if failed:
         for uid in failed:
             click.echo(f"  - {uid}: {snapshots[uid].error}", err=True)
+    return snapshots  # type: ignore[return-value]
 
 
 @main.command()
@@ -299,7 +315,12 @@ def demo(port: int, host: str, open_browser: bool) -> None:
     with tempfile.TemporaryDirectory(prefix="dbt-features-demo-") as tmp:
         site = Path(tmp) / "site"
         catalog = parse_project(Path(tmp), manifest_path=manifest)
-        render_catalog(catalog, site)
+        # Synthesize a plausible enrichment cache so the demo shows
+        # freshness/null%/cardinality without needing a real warehouse.
+        # Values are deterministic per group name, so screenshots are
+        # reproducible.
+        enrichment = _synthesize_demo_enrichment(catalog)
+        render_catalog(catalog, site, enrichment=enrichment)
 
         actual_port = _pick_free_port(host, port)
         url = f"http://{host}:{actual_port}"
@@ -331,6 +352,79 @@ def demo(port: int, host: str, open_browser: bool) -> None:
                 click.echo("\nStopped.")
             finally:
                 httpd.shutdown()
+
+
+def _synthesize_demo_enrichment(catalog: object) -> dict[str, object]:
+    """Build a plausible-looking enrichment map for the bundled demo.
+
+    Times are computed relative to ``now`` so the demo never shows "last
+    updated 3 years ago" if a user installs an old version. Per-group
+    ages are picked to land in different freshness states (fresh / warn /
+    error) so the UI exercises every code path.
+    """
+
+    from datetime import datetime, timedelta, timezone
+
+    from dbt_features.enrichment.models import ColumnStats, FreshnessSnapshot
+
+    now = datetime.now(timezone.utc)
+
+    # Hand-tuned to demonstrate the three states and a "no timestamp_column"
+    # case, matching the bundled demo manifest. Falls back to plausible
+    # defaults for any group not in this map (forward-compatible if the
+    # demo grows).
+    age_overrides = {
+        "customer_features_daily": timedelta(hours=2),       # fresh
+        "customer_features_lifetime": None,                  # no timestamp anchor
+        "store_features_hourly": timedelta(hours=3),         # past 2h warn, before 6h error
+    }
+    row_count_overrides = {
+        "customer_features_daily": 12_847,
+        "customer_features_lifetime": 8_234,
+        "store_features_hourly": 184_532,
+    }
+
+    out: dict[str, object] = {}
+    for group in catalog.feature_groups:  # type: ignore[attr-defined]
+        age = age_overrides.get(group.name, timedelta(hours=4))
+        max_ts = (now - age) if age is not None else None
+        row_count = row_count_overrides.get(group.name, 1_000)
+
+        columns = {}
+        for feature in group.features:
+            null_count, distinct_count = _demo_column_stats(feature.name, row_count)
+            columns[feature.name] = ColumnStats(null_count=null_count, distinct_count=distinct_count)
+
+        out[group.unique_id] = FreshnessSnapshot(
+            queried_at=now,
+            max_timestamp=max_ts,
+            row_count=row_count,
+            columns=columns,
+        )
+    return out
+
+
+def _demo_column_stats(name: str, row_count: int) -> tuple[int, int]:
+    """Pick believable null/distinct counts for the demo, by column name.
+
+    The point is for the UI to look real, not for the numbers to mean
+    anything. Hard-coded heuristics — entity columns are mostly distinct,
+    boolean-named columns have ~2 distinct, etc.
+    """
+
+    if name in ("customer_id", "store_id"):
+        return 0, max(1, int(row_count * 0.62))  # mostly distinct identifiers
+    if name.startswith("is_") or name == "is_repeat_customer":
+        return 0, 2
+    if name == "preferred_category":
+        return int(row_count * 0.04), 8
+    if "count" in name or name.endswith("_value_usd"):
+        return int(row_count * 0.012), max(1, int(row_count * 0.18))
+    if name == "demand_score":
+        return int(row_count * 0.001), max(1, int(row_count * 0.4))
+    if name == "first_order_date":
+        return int(row_count * 0.005), max(1, int(row_count * 0.22))
+    return int(row_count * 0.01), max(1, int(row_count * 0.3))
 
 
 class _sigterm_as_keyboard_interrupt:
@@ -403,6 +497,11 @@ def _safe_clear(directory: Path) -> None:
     Refuses to operate above the cwd to avoid disasters from a typo'd
     ``--output``. The check is conservative — if you need to write outside
     cwd, just delete the directory yourself.
+
+    Preserves the ``.cache/`` subdirectory so warehouse enrichment data
+    survives a clean rebuild. The cache represents real warehouse facts
+    that are independent of the rendered site; wiping it on every build
+    would force a re-query even when ``--connection`` isn't passed.
     """
 
     import os
@@ -420,6 +519,8 @@ def _safe_clear(directory: Path) -> None:
         sys.exit(2)
 
     for entry in directory.iterdir():
+        if entry.name == ".cache":
+            continue
         if entry.is_dir() and not entry.is_symlink():
             _rmtree(entry)
         else:

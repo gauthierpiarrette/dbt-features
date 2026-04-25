@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import os
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import duckdb
@@ -540,6 +540,104 @@ def test_build_with_bad_profile_fails_helpfully(
     assert "Profile 'missing-profile' not found" in result.output
 
 
+def test_build_uses_cache_when_no_connection_passed(
+    tmp_path: Path, duckdb_warehouse: Path, project_dir: Path
+) -> None:
+    """If a fresh enrichment cache exists, the build must reuse it even
+    when --connection isn't passed. Otherwise users would lose freshness
+    UI on rebuilds where they forgot the flag."""
+
+    from click.testing import CliRunner
+
+    from dbt_features.cli import main
+
+    profiles_dir = tmp_path / "dbt"
+    _write_profile_for(duckdb_warehouse, profiles_dir)
+
+    runner = CliRunner()
+    # Use isolated_filesystem so the cwd-safety check in _safe_clear allows
+    # the rebuild step to clean the output directory.
+    with runner.isolated_filesystem(temp_dir=tmp_path):
+        out = Path("site")
+
+        # First build with --connection populates the cache.
+        first = runner.invoke(
+            main,
+            [
+                "build",
+                "--project-dir",
+                str(project_dir),
+                "--output",
+                str(out),
+                "--connection",
+                "demo",
+                "--profiles-dir",
+                str(profiles_dir),
+            ],
+        )
+        assert first.exit_code == 0, first.output
+        assert (out / ".cache" / "enrichment.json").exists()
+
+        # Second build without --connection — should reuse the cache.
+        result = runner.invoke(
+            main,
+            ["build", "--project-dir", str(project_dir), "--output", str(out)],
+        )
+        assert result.exit_code == 0, result.output
+        assert "reusing cached data" in result.output
+
+
+def test_clean_preserves_cache_directory(
+    tmp_path: Path, duckdb_warehouse: Path, project_dir: Path
+) -> None:
+    """The cache survives `--clean` rebuilds. Wiping it on every build
+    would defeat the point of the TTL."""
+
+    from click.testing import CliRunner
+
+    from dbt_features.cli import main
+
+    profiles_dir = tmp_path / "dbt"
+    _write_profile_for(duckdb_warehouse, profiles_dir)
+
+    runner = CliRunner()
+    out = tmp_path / "site"
+    # Build once with connection
+    runner.invoke(
+        main,
+        [
+            "build",
+            "--project-dir",
+            str(project_dir),
+            "--output",
+            str(out),
+            "--connection",
+            "demo",
+            "--profiles-dir",
+            str(profiles_dir),
+        ],
+    )
+    cache_path = out / ".cache" / "enrichment.json"
+    assert cache_path.exists()
+
+    # Use isolated_filesystem so _safe_clear is willing to operate.
+    with runner.isolated_filesystem(temp_dir=tmp_path):
+        local_out = Path("site")
+        local_out.mkdir()
+        # Drop the cache into the local output to test preservation
+        (local_out / ".cache").mkdir()
+        (local_out / ".cache" / "enrichment.json").write_text(cache_path.read_text())
+        # Drop a stale file that should be cleaned
+        (local_out / "stale.html").write_text("stale")
+
+        runner.invoke(
+            main, ["build", "--project-dir", str(project_dir), "--output", str(local_out)]
+        )
+
+        assert not (local_out / "stale.html").exists()  # cleaned
+        assert (local_out / ".cache" / "enrichment.json").exists()  # preserved
+
+
 def test_build_no_cache_flag(
     tmp_path: Path, duckdb_warehouse: Path, project_dir: Path
 ) -> None:
@@ -571,6 +669,139 @@ def test_build_no_cache_flag(
     )
     assert result.exit_code == 0, result.output
     assert not (out / ".cache" / "enrichment.json").exists()
+
+
+# ---------- format helpers + freshness status ---------------------------------
+
+
+class TestFormatHelpers:
+    def test_humanize_duration_buckets(self) -> None:
+        from dbt_features.enrichment.format import humanize_duration
+
+        assert humanize_duration(0) == "just now"
+        assert humanize_duration(45) == "just now"
+        assert humanize_duration(60) == "1 minute ago"
+        assert humanize_duration(120) == "2 minutes ago"
+        assert humanize_duration(3600) == "1 hour ago"
+        assert humanize_duration(7200) == "2 hours ago"
+        assert humanize_duration(86_400) == "1 day ago"
+        assert humanize_duration(86_400 * 3) == "3 days ago"
+
+    def test_humanize_count(self) -> None:
+        from dbt_features.enrichment.format import humanize_count
+
+        assert humanize_count(None) == "—"
+        assert humanize_count(0) == "0"
+        assert humanize_count(1234) == "1,234"
+        assert humanize_count(12_345_678) == "12,345,678"
+
+    def test_humanize_percent(self) -> None:
+        from dbt_features.enrichment.format import humanize_percent
+
+        assert humanize_percent(None, 100) == "—"
+        assert humanize_percent(0, 100) == "0%"
+        assert humanize_percent(0, 0) == "—"
+        assert humanize_percent(1, 100) == "1.0%"
+        assert humanize_percent(50, 100) == "50.0%"
+        # sub-1% drops to 2-decimal precision
+        assert humanize_percent(3, 1000) == "0.30%"
+        # vanishingly-small still gets a representation users can act on
+        assert humanize_percent(1, 1_000_000) == "<0.01%"
+
+
+class TestComputeFreshnessStatus:
+    def _now(self) -> datetime:
+        return datetime(2024, 12, 31, 12, 0, 0, tzinfo=timezone.utc)
+
+    def _snap(self, max_ts: datetime | None, row_count: int = 100, error: str | None = None) -> FreshnessSnapshot:
+        return FreshnessSnapshot(
+            queried_at=self._now(),
+            max_timestamp=max_ts,
+            row_count=row_count,
+            error=error,
+        )
+
+    def test_no_snapshot_returns_unknown(self) -> None:
+        from dbt_features.enrichment.format import compute_freshness_status
+
+        status = compute_freshness_status(None, None, now=self._now())
+        assert status.label == "unknown"
+
+    def test_snapshot_with_error(self) -> None:
+        from dbt_features.enrichment.format import compute_freshness_status
+
+        status = compute_freshness_status(
+            self._snap(None, error="permission denied"), None, now=self._now()
+        )
+        assert status.label == "error"
+        assert "check failed" in status.age_human
+
+    def test_within_warn_threshold_is_fresh(self) -> None:
+        from dbt_features.enrichment.format import compute_freshness_status
+        from dbt_features.schema import Freshness
+
+        # 1 hour old, warn at 24h
+        snap = self._snap(self._now() - timedelta(hours=1))
+        freshness = Freshness.model_validate(
+            {"warn_after": {"count": 24, "period": "hour"}}
+        )
+        status = compute_freshness_status(snap, freshness, now=self._now())
+        assert status.label == "fresh"
+        assert status.age_human == "1 hour ago"
+
+    def test_past_warn_threshold(self) -> None:
+        from dbt_features.enrichment.format import compute_freshness_status
+        from dbt_features.schema import Freshness
+
+        # 25 hours old, warn at 24h, error at 48h
+        snap = self._snap(self._now() - timedelta(hours=25))
+        freshness = Freshness.model_validate(
+            {
+                "warn_after": {"count": 24, "period": "hour"},
+                "error_after": {"count": 48, "period": "hour"},
+            }
+        )
+        status = compute_freshness_status(snap, freshness, now=self._now())
+        assert status.label == "warn"
+
+    def test_past_error_threshold(self) -> None:
+        from dbt_features.enrichment.format import compute_freshness_status
+        from dbt_features.schema import Freshness
+
+        # 50 hours old, error at 48h
+        snap = self._snap(self._now() - timedelta(hours=50))
+        freshness = Freshness.model_validate(
+            {
+                "warn_after": {"count": 24, "period": "hour"},
+                "error_after": {"count": 48, "period": "hour"},
+            }
+        )
+        status = compute_freshness_status(snap, freshness, now=self._now())
+        assert status.label == "error"
+
+    def test_no_freshness_sla_falls_back_to_fresh(self) -> None:
+        from dbt_features.enrichment.format import compute_freshness_status
+
+        snap = self._snap(self._now() - timedelta(days=365))
+        # With no SLA, we don't know what stale means — treat as fresh
+        # rather than warn, since the user hasn't asked us to watchdog this.
+        status = compute_freshness_status(snap, None, now=self._now())
+        assert status.label == "fresh"
+
+    def test_no_timestamp_column_with_rows(self) -> None:
+        from dbt_features.enrichment.format import compute_freshness_status
+
+        snap = self._snap(None, row_count=50)
+        status = compute_freshness_status(snap, None, now=self._now())
+        assert status.label == "fresh"
+        assert "not time-anchored" in status.age_human
+
+    def test_no_timestamp_column_empty_table(self) -> None:
+        from dbt_features.enrichment.format import compute_freshness_status
+
+        snap = self._snap(None, row_count=0)
+        status = compute_freshness_status(snap, None, now=self._now())
+        assert status.label == "warn"
 
 
 def test_age_is_aware_of_naive_timestamps(tmp_path: Path) -> None:

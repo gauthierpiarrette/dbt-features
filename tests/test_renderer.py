@@ -186,6 +186,105 @@ def test_render_is_idempotent(tmp_path: Path, project_dir: Path) -> None:
     assert first.split("Built ")[0] == second.split("Built ")[0]
 
 
+def test_render_with_enrichment_shows_freshness_and_stats(tmp_path: Path) -> None:
+    """When enrichment data is provided, the rendered HTML must surface
+    freshness status, last-update timestamp, row count, null %, and
+    distinct count."""
+
+    from datetime import datetime, timedelta, timezone
+
+    from dbt_features.demo import demo_manifest_path
+    from dbt_features.enrichment.models import ColumnStats, FreshnessSnapshot
+    from dbt_features.parser import parse_project
+    from dbt_features.renderer import render_catalog
+
+    cat = parse_project(tmp_path, manifest_path=demo_manifest_path())
+    now = datetime.now(timezone.utc)
+
+    # Hand-craft an enrichment for the daily group: 2h old, with stats
+    # on every feature, all within freshness SLA.
+    daily = next(g for g in cat.feature_groups if g.name == "customer_features_daily")
+    enrichment = {
+        daily.unique_id: FreshnessSnapshot(
+            queried_at=now,
+            max_timestamp=now - timedelta(hours=2),
+            row_count=12_847,
+            columns={
+                f.name: ColumnStats(null_count=128, distinct_count=950) for f in daily.features
+            },
+        )
+    }
+
+    out = tmp_path / "site"
+    render_catalog(cat, out, enrichment=enrichment)
+
+    page = (out / "groups" / "customer-features-daily" / "index.html").read_text()
+    # Status banner reflects the green/fresh state
+    assert "freshness-fresh" in page
+    assert "Fresh" in page
+    assert "2 hours ago" in page
+    # Row count is rendered with thousands separator
+    assert "12,847" in page
+    # Per-column stats columns appear in the features table
+    assert "Null %" in page
+    assert "Distinct" in page
+
+    # Individual feature page surfaces null rate and distinct count
+    feature_page = (
+        out / "groups" / "customer-features-daily" / "features" / "orders-count-7d.html"
+    ).read_text()
+    assert "Null rate" in feature_page
+    assert "Distinct values" in feature_page
+    assert "950" in feature_page
+
+    # Index card has a status dot
+    index = (out / "index.html").read_text()
+    assert "freshness-dot-fresh" in index
+
+
+def test_render_without_enrichment_omits_freshness_ui(tmp_path: Path, project_dir: Path) -> None:
+    """No enrichment passed → no freshness banner, no null/distinct columns,
+    and the page still renders cleanly."""
+
+    from dbt_features.parser import parse_project
+    from dbt_features.renderer import render_catalog
+
+    cat = parse_project(project_dir)
+    out = tmp_path / "site"
+    render_catalog(cat, out)
+
+    page = (out / "groups" / "customer-features-daily" / "index.html").read_text()
+    assert "freshness-banner" not in page
+    assert "Null %" not in page  # only appears when snapshot present
+
+
+def test_render_with_enrichment_error_shows_check_failed(tmp_path: Path) -> None:
+    """A snapshot with an error must render the failure inline rather
+    than silently dropping the freshness UI."""
+
+    from datetime import datetime, timezone
+
+    from dbt_features.demo import demo_manifest_path
+    from dbt_features.enrichment.models import FreshnessSnapshot
+    from dbt_features.parser import parse_project
+    from dbt_features.renderer import render_catalog
+
+    cat = parse_project(tmp_path, manifest_path=demo_manifest_path())
+    daily = next(g for g in cat.feature_groups if g.name == "customer_features_daily")
+    enrichment = {
+        daily.unique_id: FreshnessSnapshot(
+            queried_at=datetime.now(timezone.utc),
+            error="Permission denied",
+        )
+    }
+
+    out = tmp_path / "site"
+    render_catalog(cat, out, enrichment=enrichment)
+    page = (out / "groups" / "customer-features-daily" / "index.html").read_text()
+    assert "freshness-error" in page
+    assert "Permission denied" in page
+
+
 def test_lifecycle_and_version_render(tmp_path: Path) -> None:
     """Deprecated/preview/version metadata must visibly surface in the UI."""
 

@@ -26,11 +26,38 @@
   {% endif %}
 </section>
 
+{% if snapshot %}
+{% set status = freshness_status(snapshot, group.freshness) %}
+<section class="freshness-banner freshness-{{ status.label }}">
+  <div class="freshness-headline">
+    <span class="freshness-dot freshness-dot-{{ status.label }}"></span>
+    <strong>
+      {% if status.label == 'fresh' %}Fresh
+      {% elif status.label == 'warn' %}Warning — past warn threshold
+      {% elif status.label == 'error' %}Stale — past error threshold
+      {% elif status.label == 'unknown' %}Status unknown
+      {% endif %}
+    </strong>
+    {% if snapshot.error %}
+    <span class="muted">{{ snapshot.error }}</span>
+    {% else %}
+    <span class="muted">parent table updated {{ status.age_human }}</span>
+    {% endif %}
+  </div>
+</section>
+{% endif %}
+
 <section class="kv-grid">
   <div><dt>Feature group</dt><dd><a href="{{ group_url(group, base_url=base_url) }}"><code>{{ group.name }}</code></a></dd></div>
   {% if feature.column_type %}<div><dt>Warehouse type</dt><dd><code>{{ feature.column_type }}</code></dd></div>{% endif %}
   {% if feature.feature_type %}<div><dt>Semantic type</dt><dd>{{ feature.feature_type.value }}</dd></div>{% endif %}
   {% if feature.null_behavior %}<div><dt>Null behavior</dt><dd>{{ feature.null_behavior.value }}</dd></div>{% endif %}
+  {% if column_stats and snapshot and snapshot.row_count is not none %}
+  <div><dt>Null rate</dt><dd>{{ humanize_percent(column_stats.null_count, snapshot.row_count) }}{% if column_stats.null_count is not none %} <span class="muted">({{ column_stats.null_count|humanize_count }} of {{ snapshot.row_count|humanize_count }}){% endif %}</span></dd></div>
+  {% endif %}
+  {% if column_stats and column_stats.distinct_count is not none %}
+  <div><dt>Distinct values</dt><dd>{{ column_stats.distinct_count|humanize_count }}</dd></div>
+  {% endif %}
   {% if feature.definition_version > 1 %}<div><dt>Definition version</dt><dd>v{{ feature.definition_version }}</dd></div>{% endif %}
   <div><dt>Lifecycle</dt><dd>{{ feature.lifecycle.value }}{% if feature.replacement %} → <code>{{ feature.replacement }}</code>{% endif %}</dd></div>
   {% if group.entity_columns %}<div><dt>Entity grain</dt><dd>{% for c in group.entity_columns %}<code>{{ c }}</code>{% if not loop.last %}, {% endif %}{% endfor %}</dd></div>{% endif %}
