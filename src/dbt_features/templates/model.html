@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block content %}
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+  <a href="{{ base_url }}/index.html">{{ catalog.project_name }}</a>
+  <span class="sep" aria-hidden="true">›</span>
+  <a href="{{ base_url }}/models/index.html">Models</a>
+  <span class="sep" aria-hidden="true">›</span>
+  <span aria-current="page">{{ model_name }}</span>
+</nav>
+
+<section class="page-head">
+  <div class="page-title-row">
+    <h1><code class="title-code">{{ model_name }}</code></h1>
+    <div class="badges">
+      <span class="badge">model</span>
+    </div>
+  </div>
+  <p class="lede">Inverted view: every feature this model declares as input via <code>used_by</code>.</p>
+</section>
+
+{% if has_enrichment %}
+<section class="freshness-banner freshness-{{ worst_freshness }}">
+  <div class="freshness-headline">
+    <span class="freshness-dot freshness-dot-{{ worst_freshness }}"></span>
+    <strong>
+      {% if worst_freshness == 'fresh' %}All inputs fresh
+      {% elif worst_freshness == 'warn' %}At least one input past warn threshold
+      {% elif worst_freshness == 'error' %}At least one input is stale
+      {% else %}Status unknown
+      {% endif %}
+    </strong>
+    <span class="muted">aggregated across {{ groups|length }} feature group{{ '' if groups|length == 1 else 's' }}</span>
+  </div>
+</section>
+{% endif %}
+
+<section class="info-grid">
+  <div class="info-block">
+    <h3 class="info-block-title">Inputs</h3>
+    <dl class="info-pairs">
+      <div><dt>Feature groups</dt><dd>{{ groups|length }}</dd></div>
+      <div><dt>Features</dt><dd>{% set total_features = groups | map(attribute=1) | map('length') | sum %}{{ total_features }}</dd></div>
+    </dl>
+  </div>
+  {% if entities %}
+  <div class="info-block">
+    <h3 class="info-block-title">Entities</h3>
+    <dl class="info-pairs">
+      <div><dt>Joins on</dt><dd>{% for e in entities %}<code>{{ e }}</code>{% if not loop.last %}, {% endif %}{% endfor %}</dd></div>
+    </dl>
+  </div>
+  {% endif %}
+  {% if owners %}
+  <div class="info-block">
+    <h3 class="info-block-title">Owners</h3>
+    <dl class="info-pairs">
+      <div><dt>Producing teams</dt><dd>{% for o in owners %}{{ o }}{% if not loop.last %} · {% endif %}{% endfor %}</dd></div>
+    </dl>
+  </div>
+  {% endif %}
+</section>
+
+<section>
+  <h2 class="section-h2">Features consumed</h2>
+  {% for group, features in groups %}
+  {% set primary_entity = group.entity_columns[0] if group.entity_columns else None %}
+  {% set entity_color = entity_palette.get(primary_entity) if primary_entity else None %}
+  <div class="model-group-block" {% if entity_color %}style="--entity-accent: {{ entity_color }};"{% endif %}>
+    <div class="model-group-head">
+      <h3>
+        {% if entity_color %}<span class="entity-dot" aria-hidden="true"></span>{% endif %}
+        <a href="{{ group_url(group, base_url=base_url) }}">{{ group.name }}</a>
+        <span class="muted small">{{ features|length }} feature{{ '' if features|length == 1 else 's' }}</span>
+      </h3>
+      {% if group.fully_qualified_name %}
+      <code class="muted small">{{ group.fully_qualified_name }}</code>
+      {% endif %}
+    </div>
+    <ul class="model-feature-list">
+      {% for f in features %}
+      <li>
+        <a href="{{ feature_url(group, f, base_url=base_url) }}"><code>{{ f.name }}</code></a>
+        {% if f.feature_type %}<span class="pill pill-{{ f.feature_type.value }}">{{ f.feature_type.value }}</span>{% endif %}
+        {% if f.lifecycle.value != 'active' %}<span class="lifecycle lifecycle-{{ f.lifecycle.value }}">{{ f.lifecycle.value }}</span>{% endif %}
+        {% if f.description %}<span class="muted small">{{ f.description }}</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endfor %}
+</section>
+{% endblock %}

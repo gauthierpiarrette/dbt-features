@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+  <a href="{{ base_url }}/index.html">{{ catalog.project_name }}</a>
+  <span class="sep" aria-hidden="true">›</span>
+  <span aria-current="page">Models</span>
+</nav>
+
+<section class="page-head">
+  <h1>ML models</h1>
+  <p class="lede">Models declared as consumers via <code>meta.feature_catalog.used_by</code> on individual feature columns. Each page lists the features that model reads.</p>
+</section>
+
+{% if not features_by_model %}
+<section class="empty">
+  <h2>No declared consumers</h2>
+  <p>Add <code>meta.feature_catalog.used_by: [my_model]</code> to a feature column to populate this page.</p>
+</section>
+{% else %}
+<div class="card-grid">
+  {% for model_name, entries in features_by_model.items() %}
+  {% set group_count = (entries | map(attribute=0) | map(attribute='unique_id') | unique | list | length) %}
+  <a class="card" href="{{ model_url(model_name, base_url=base_url) }}">
+    <div class="card-head">
+      <div class="card-title">
+        <h3><code>{{ model_name }}</code></h3>
+      </div>
+      <span class="card-feature-count">{{ entries|length }}<span class="muted small">{{ ' feature' if entries|length == 1 else ' features' }}</span></span>
+    </div>
+    <p class="card-desc muted">From {{ group_count }} feature group{{ '' if group_count == 1 else 's' }}.</p>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
