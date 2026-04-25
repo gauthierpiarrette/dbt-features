@@ -16,7 +16,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-SCHEMA_VERSION = "0.1"
+SCHEMA_VERSION = "0.2"
 
 
 class FeatureType(str, Enum):
@@ -97,11 +97,18 @@ class FeatureMeta(BaseModel):
     """Column-level ``feature_catalog`` metadata.
 
     Lives under ``columns[].meta.feature_catalog`` in dbt YAML.
+
+    In v0.2+ columns are auto-included in the catalog when their parent
+    table is marked ``is_feature_table: true`` — except those listed in
+    ``entity`` / ``grain`` / ``timestamp_column`` / ``exclude_columns``.
+    A column block is therefore an *override*, not an opt-in. Set
+    ``is_feature: false`` to exclude a single column without listing it
+    at the table level.
     """
 
     model_config = ConfigDict(extra="forbid")
 
-    is_feature: bool = False
+    is_feature: bool = True
     feature_type: FeatureType | None = None
     null_behavior: NullBehavior | None = None
     used_by: list[str] = Field(default_factory=list)
@@ -130,6 +137,7 @@ class FeatureTableMeta(BaseModel):
     entity: str | list[str] | None = None
     grain: list[str] = Field(default_factory=list)
     timestamp_column: str | None = None
+    exclude_columns: list[str] = Field(default_factory=list)
     freshness: Freshness | None = None
     owner: str | None = None
     tags: list[str] = Field(default_factory=list)
@@ -147,7 +155,7 @@ class FeatureTableMeta(BaseModel):
             return [v]
         return list(v)
 
-    @field_validator("tags", "grain")
+    @field_validator("tags", "grain", "exclude_columns")
     @classmethod
     def _strip_strings(cls, v: list[str]) -> list[str]:
         return [s.strip() for s in v if s and s.strip()]

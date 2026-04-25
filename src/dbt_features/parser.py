@@ -20,6 +20,7 @@ from typing import Any
 from pydantic import ValidationError
 
 from dbt_features.catalog import Catalog, Feature, FeatureGroup, LineageRef
+from dbt_features.inference import infer_feature_type
 from dbt_features.schema import (
     FeatureMeta,
     FeatureTableMeta,
@@ -171,24 +172,52 @@ def _build_features(
     catalog_nodes: dict[str, Any],
     table_meta: FeatureTableMeta,
 ) -> tuple[Feature, ...]:
-    features: list[Feature] = []
+    """Derive features from a feature-table node.
+
+    Inclusion rule (v0.2): every column on the model is a feature *unless*
+    it appears in the table's structural metadata (entity / grain /
+    timestamp_column / exclude_columns) or its column-level meta block sets
+    ``is_feature: false``. Column blocks are pure overrides — their absence
+    is not an opt-out.
+
+    ``feature_type`` falls back to ``infer_feature_type(column_type)`` when
+    the user hasn't specified one. The inference is conservative (numeric /
+    boolean / timestamp / embedding only); ambiguous warehouse types like
+    VARCHAR stay unspecified.
+    """
+
     columns: dict[str, Any] = node.get("columns") or {}
     catalog_columns: dict[str, Any] = (
         catalog_nodes.get(unique_id, {}).get("columns", {}) if catalog_nodes else {}
     )
 
+    excluded = (
+        set(table_meta.entity_columns)
+        | set(table_meta.grain)
+        | ({table_meta.timestamp_column} if table_meta.timestamp_column else set())
+        | set(table_meta.exclude_columns)
+    )
+
+    features: list[Feature] = []
     for col_name, col in columns.items():
-        meta_block = _column_feature_catalog_meta(col)
-        if meta_block is None:
+        if col_name in excluded:
             continue
-        try:
-            f_meta = FeatureMeta.model_validate(meta_block)
-        except ValidationError as e:
-            raise SchemaError(
-                _format_validation_error(e, col, label=f"column `{col_name}`"),
-                node_id=unique_id,
-            ) from e
+
+        meta_block = _column_feature_catalog_meta(col)
+        if meta_block is not None:
+            try:
+                f_meta = FeatureMeta.model_validate(meta_block)
+            except ValidationError as e:
+                raise SchemaError(
+                    _format_validation_error(e, col, label=f"column `{col_name}`"),
+                    node_id=unique_id,
+                ) from e
+        else:
+            f_meta = FeatureMeta()
+
         if not f_meta.is_feature:
+            # Explicit per-column opt-out. Same effect as listing the column
+            # under ``exclude_columns``, just colocated with the column.
             continue
 
         column_type = col.get("data_type")
@@ -197,6 +226,7 @@ def _build_features(
             if cat_col:
                 column_type = cat_col.get("type")
 
+        feature_type = f_meta.feature_type or infer_feature_type(column_type)
         description = f_meta.description or col.get("description") or ""
         column_tags = list(col.get("tags") or [])
 
@@ -205,7 +235,7 @@ def _build_features(
                 name=col_name,
                 description=description,
                 column_type=column_type,
-                feature_type=f_meta.feature_type,
+                feature_type=feature_type,
                 null_behavior=f_meta.null_behavior,
                 used_by=tuple(f_meta.used_by),
                 tags=tuple(column_tags),
@@ -215,14 +245,8 @@ def _build_features(
             )
         )
 
-    # Stable order: declared order from the YAML (preserved by dict in py3.7+).
-    # If user provided a grain, surface entity columns first as a courtesy.
-    entity_cols = set(table_meta.entity_columns)
-
-    def _sort_key(f: Feature) -> tuple[int, str]:
-        return (0 if f.name in entity_cols else 1, f.name)
-
-    features.sort(key=_sort_key)
+    # Preserve YAML declaration order (Python dicts are insertion-ordered
+    # since 3.7, and dbt round-trips that order through manifest.json).
     return tuple(features)
 
 

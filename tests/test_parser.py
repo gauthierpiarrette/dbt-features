@@ -14,7 +14,11 @@ def test_parses_feature_groups(project_dir: Path) -> None:
     names = [g.name for g in cat.feature_groups]
     assert names == ["customer_features_daily", "customer_features_lifetime"]
     assert cat.project_name == "jaffle_features"
-    assert cat.feature_count == 5  # 3 features in daily, 2 in lifetime
+    # daily: orders_count_7d, is_repeat_customer, total_value_usd, preferred_category (4)
+    # lifetime: lifetime_order_count (1)
+    # Excluded: entity/grain/timestamp cols, _loaded_at via exclude_columns,
+    # debug_score via is_feature: false.
+    assert cat.feature_count == 5
 
 
 def test_feature_metadata_parsed(project_dir: Path) -> None:
@@ -29,35 +33,106 @@ def test_feature_metadata_parsed(project_dir: Path) -> None:
     assert daily.freshness.warn_after.count == 36
 
 
-def test_only_marked_columns_become_features(project_dir: Path) -> None:
+def test_entity_grain_and_timestamp_columns_excluded_from_features(project_dir: Path) -> None:
+    """Columns named in entity / grain / timestamp_column are auto-excluded.
+
+    They describe *the row*, not properties *of the entity* — so they
+    aren't features. This is the heart of the v0.2 inclusion rule.
+    """
+
     cat = parse_project(project_dir)
     daily = next(g for g in cat.feature_groups if g.name == "customer_features_daily")
     feature_names = {f.name for f in daily.features}
-    # feature_date is a column but is NOT marked is_feature, so it should be excluded
-    assert "feature_date" not in feature_names
-    assert feature_names == {"customer_id", "orders_count_7d", "is_repeat_customer"}
+    assert "customer_id" not in feature_names  # entity + grain
+    assert "feature_date" not in feature_names  # grain + timestamp_column
 
 
-def test_entity_columns_sort_first(project_dir: Path) -> None:
+def test_exclude_columns_at_table_level(project_dir: Path) -> None:
+    """Columns listed in `exclude_columns` are dropped without per-column blocks."""
+
     cat = parse_project(project_dir)
     daily = next(g for g in cat.feature_groups if g.name == "customer_features_daily")
-    assert daily.features[0].name == "customer_id"
+    feature_names = {f.name for f in daily.features}
+    assert "_loaded_at" not in feature_names
 
 
-def test_feature_type_and_null_behavior(project_dir: Path) -> None:
+def test_per_column_is_feature_false_excludes(project_dir: Path) -> None:
+    """`is_feature: false` on a column is the per-column escape hatch."""
+
+    cat = parse_project(project_dir)
+    daily = next(g for g in cat.feature_groups if g.name == "customer_features_daily")
+    feature_names = {f.name for f in daily.features}
+    assert "debug_score" not in feature_names
+
+
+def test_columns_without_meta_block_are_auto_included(project_dir: Path) -> None:
+    """v0.2 core: a non-key column with no `feature_catalog` block is still a feature."""
+
+    cat = parse_project(project_dir)
+    daily = next(g for g in cat.feature_groups if g.name == "customer_features_daily")
+    feature_names = {f.name for f in daily.features}
+    # `total_value_usd` has no meta.feature_catalog block at all.
+    assert "total_value_usd" in feature_names
+
+
+def test_feature_type_inferred_when_not_overridden(project_dir: Path) -> None:
+    """Inference fills in `feature_type` from warehouse type when user didn't say."""
+
+    cat = parse_project(project_dir)
+    daily = next(g for g in cat.feature_groups if g.name == "customer_features_daily")
+
+    # No block at all -> inferred from DECIMAL(10, 2) -> numeric.
+    total = next(f for f in daily.features if f.name == "total_value_usd")
+    assert total.feature_type == FeatureType.NUMERIC
+
+    # Block present but no feature_type -> inferred from BOOLEAN -> boolean.
+    repeat = next(f for f in daily.features if f.name == "is_repeat_customer")
+    assert repeat.feature_type == FeatureType.BOOLEAN
+
+    # Block present with explicit feature_type -> override wins (varchar
+    # would otherwise be left unspecified by inference).
+    pref = next(f for f in daily.features if f.name == "preferred_category")
+    assert pref.feature_type == FeatureType.CATEGORICAL
+
+
+def test_explicit_feature_type_beats_inference(project_dir: Path) -> None:
+    cat = parse_project(project_dir)
+    lifetime = next(g for g in cat.feature_groups if g.name == "customer_features_lifetime")
+    lto = next(f for f in lifetime.features if f.name == "lifetime_order_count")
+    # No explicit feature_type in fixture -> inferred from INTEGER.
+    assert lto.feature_type == FeatureType.NUMERIC
+
+
+def test_feature_columns_preserve_yaml_order(project_dir: Path) -> None:
+    """No more 'entity columns first' resorting — entity cols aren't features.
+
+    We surface columns in the order dbt presents them (which round-trips
+    YAML declaration order), so users can control layout from their YAML.
+    """
+
+    cat = parse_project(project_dir)
+    daily = next(g for g in cat.feature_groups if g.name == "customer_features_daily")
+    names = [f.name for f in daily.features]
+    assert names == [
+        "orders_count_7d",
+        "is_repeat_customer",
+        "total_value_usd",
+        "preferred_category",
+    ]
+
+
+def test_used_by_and_null_behavior_overrides(project_dir: Path) -> None:
     cat = parse_project(project_dir)
     daily = next(g for g in cat.feature_groups if g.name == "customer_features_daily")
     orders = next(f for f in daily.features if f.name == "orders_count_7d")
-    assert orders.feature_type == FeatureType.NUMERIC
     assert orders.null_behavior == NullBehavior.ZERO
     assert "churn_model_v2" in orders.used_by
 
 
-def test_warehouse_type_from_catalog_json(project_dir: Path) -> None:
+def test_warehouse_type_from_manifest_takes_precedence(project_dir: Path) -> None:
     cat = parse_project(project_dir)
     daily = next(g for g in cat.feature_groups if g.name == "customer_features_daily")
     orders = next(f for f in daily.features if f.name == "orders_count_7d")
-    # data_type from manifest takes precedence
     assert orders.column_type == "integer"
 
 
@@ -81,9 +156,7 @@ def test_lineage_upstream_downstream(project_dir: Path) -> None:
     upstream_names = {r.name for r in daily.upstream}
     downstream_names = {r.name for r in daily.downstream}
     assert "stg_orders" in upstream_names
-    # customer_features_lifetime depends on this — it's a feature table
     assert "customer_features_lifetime" in downstream_names
-    # consumer_dashboard_metrics also consumes it (non-feature)
     assert "consumer_dashboard_metrics" in downstream_names
 
 
@@ -177,6 +250,46 @@ def test_meta_under_config_meta_picked_up(tmp_path: Path) -> None:
     assert cat.feature_groups[0].entity_columns == ["id"]
 
 
+def test_feature_table_with_no_structural_metadata_includes_all_columns(tmp_path: Path) -> None:
+    """Edge case: no entity/grain/timestamp/exclude declared.
+
+    Every column becomes a feature. This is permissive on purpose — the
+    user opted in at the table level; if they want stricter exclusion
+    they have four mechanisms to use.
+    """
+
+    manifest = {
+        "metadata": {"project_name": "p"},
+        "nodes": {
+            "model.p.flat": {
+                "name": "flat",
+                "unique_id": "model.p.flat",
+                "resource_type": "model",
+                "package_name": "p",
+                "path": "flat.sql",
+                "original_file_path": "models/flat.sql",
+                "description": "",
+                "schema": "s",
+                "database": "d",
+                "config": {"materialized": "table"},
+                "meta": {"feature_catalog": {"is_feature_table": True}},
+                "depends_on": {"nodes": []},
+                "columns": {
+                    "a": {"name": "a", "data_type": "int", "tags": [], "meta": {}},
+                    "b": {"name": "b", "data_type": "varchar", "tags": [], "meta": {}},
+                },
+            }
+        },
+        "sources": {},
+    }
+    target = tmp_path / "target"
+    target.mkdir()
+    (target / "manifest.json").write_text(json.dumps(manifest))
+
+    cat = parse_project(tmp_path)
+    assert {f.name for f in cat.feature_groups[0].features} == {"a", "b"}
+
+
 def test_all_tags_aggregated(project_dir: Path) -> None:
     cat = parse_project(project_dir)
     assert cat.all_tags == ["customer", "daily", "lifetime"]
@@ -186,6 +299,8 @@ def test_groups_by_tag(project_dir: Path) -> None:
     cat = parse_project(project_dir)
     by_tag = cat.feature_groups_by_tag()
     assert "customer" in by_tag
-    # both groups are tagged "customer"
-    assert {g.name for g in by_tag["customer"]} == {"customer_features_daily", "customer_features_lifetime"}
+    assert {g.name for g in by_tag["customer"]} == {
+        "customer_features_daily",
+        "customer_features_lifetime",
+    }
     assert {g.name for g in by_tag["daily"]} == {"customer_features_daily"}

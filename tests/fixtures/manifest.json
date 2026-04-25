@@ -37,6 +37,7 @@
           "entity": "customer_id",
           "grain": ["feature_date", "customer_id"],
           "timestamp_column": "feature_date",
+          "exclude_columns": ["_loaded_at"],
           "freshness": {
             "warn_after": {"count": 36, "period": "hour"},
             "error_after": {"count": 48, "period": "hour"}
@@ -59,12 +60,7 @@
           "description": "Customer identifier",
           "data_type": "varchar",
           "tags": [],
-          "meta": {
-            "feature_catalog": {
-              "is_feature": true,
-              "feature_type": "identifier"
-            }
-          }
+          "meta": {}
         },
         "orders_count_7d": {
           "name": "orders_count_7d",
@@ -73,8 +69,6 @@
           "tags": [],
           "meta": {
             "feature_catalog": {
-              "is_feature": true,
-              "feature_type": "numeric",
               "null_behavior": "zero",
               "used_by": ["churn_model_v2", "ltv_model_v3"]
             }
@@ -87,9 +81,43 @@
           "tags": [],
           "meta": {
             "feature_catalog": {
-              "is_feature": true,
-              "feature_type": "boolean",
               "used_by": ["churn_model_v2"]
+            }
+          }
+        },
+        "total_value_usd": {
+          "name": "total_value_usd",
+          "description": "Sum of order value in trailing 7 days",
+          "data_type": "DECIMAL(10, 2)",
+          "tags": [],
+          "meta": {}
+        },
+        "preferred_category": {
+          "name": "preferred_category",
+          "description": "Most-purchased product category",
+          "data_type": "varchar",
+          "tags": [],
+          "meta": {
+            "feature_catalog": {
+              "feature_type": "categorical"
+            }
+          }
+        },
+        "_loaded_at": {
+          "name": "_loaded_at",
+          "description": "Internal load timestamp",
+          "data_type": "timestamp",
+          "tags": [],
+          "meta": {}
+        },
+        "debug_score": {
+          "name": "debug_score",
+          "description": "Internal scoring column for debugging",
+          "data_type": "double",
+          "tags": [],
+          "meta": {
+            "feature_catalog": {
+              "is_feature": false
             }
           }
         }
@@ -122,9 +150,7 @@
           "description": "Customer identifier",
           "data_type": "varchar",
           "tags": [],
-          "meta": {
-            "feature_catalog": {"is_feature": true, "feature_type": "identifier"}
-          }
+          "meta": {}
         },
         "lifetime_order_count": {
           "name": "lifetime_order_count",
@@ -133,8 +159,6 @@
           "tags": [],
           "meta": {
             "feature_catalog": {
-              "is_feature": true,
-              "feature_type": "numeric",
               "null_behavior": "zero",
               "used_by": ["ltv_model_v3"]
             }

@@ -57,8 +57,9 @@ def test_real_manifest_extracts_features(real_project_dir: Path) -> None:
     cat = parse_project(real_project_dir)
     daily = next(g for g in cat.feature_groups if g.name == "customer_features_daily")
     feature_names = {f.name for f in daily.features}
-    # is_feature: true on three columns in the example
-    assert feature_names == {"customer_id", "orders_count_7d", "is_repeat_customer"}
+    # customer_id is the entity (and in grain) -> auto-excluded under v0.2.
+    # feature_date is the timestamp_column (and in grain) -> auto-excluded.
+    assert feature_names == {"orders_count_7d", "is_repeat_customer"}
 
 
 def test_real_catalog_json_warehouse_types_picked_up(real_project_dir: Path) -> None:
@@ -132,19 +133,19 @@ def test_real_features_have_warehouse_types(real_project_dir: Path) -> None:
     cat = parse_project(real_project_dir)
     for group in cat.feature_groups:
         for feature in group.features:
-            # customer_id is varchar, the rest are numeric/boolean
             assert feature.column_type is not None, (
                 f"{group.name}.{feature.name} has no warehouse type"
             )
 
 
 def test_real_feature_types_parsed_correctly(real_project_dir: Path) -> None:
-    """The example declares feature_type for every column. Verify the
-    enum round-trips."""
+    """Verify feature_type round-trips through dbt parse + our parser.
+
+    Mix of explicit declarations and inference (BOOLEAN -> boolean).
+    """
 
     cat = parse_project(real_project_dir)
     daily = next(g for g in cat.feature_groups if g.name == "customer_features_daily")
     types = {f.name: f.feature_type for f in daily.features}
-    assert types["customer_id"] == FeatureType.IDENTIFIER
     assert types["orders_count_7d"] == FeatureType.NUMERIC
     assert types["is_repeat_customer"] == FeatureType.BOOLEAN

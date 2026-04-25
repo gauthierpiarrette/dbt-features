@@ -63,6 +63,16 @@ class TestFeatureTableMeta:
         )
         assert m.tags == ["foo", "bar"]
 
+    def test_exclude_columns_defaults_empty(self) -> None:
+        m = FeatureTableMeta.model_validate({"is_feature_table": True})
+        assert m.exclude_columns == []
+
+    def test_exclude_columns_strips_blanks(self) -> None:
+        m = FeatureTableMeta.model_validate(
+            {"is_feature_table": True, "exclude_columns": [" _loaded_at ", "", "_batch_id"]}
+        )
+        assert m.exclude_columns == ["_loaded_at", "_batch_id"]
+
 
 class TestFreshness:
     def test_requires_at_least_one_threshold(self) -> None:
@@ -80,15 +90,27 @@ class TestFreshness:
 
 
 class TestFeatureMeta:
-    def test_minimal(self) -> None:
-        m = FeatureMeta.model_validate({"is_feature": True})
+    def test_default_is_feature_true(self) -> None:
+        """v0.2: presence of a column meta block does not opt-in.
+
+        Inclusion is decided at the table level. The block exists to
+        carry overrides; ``is_feature`` defaults to True so an empty
+        block is equivalent to no block at all.
+        """
+
+        m = FeatureMeta.model_validate({})
         assert m.is_feature is True
         assert m.feature_type is None
+
+    def test_explicit_false_opts_out(self) -> None:
+        """The one new use of ``is_feature`` in v0.2 is per-column exclude."""
+
+        m = FeatureMeta.model_validate({"is_feature": False})
+        assert m.is_feature is False
 
     def test_full(self) -> None:
         m = FeatureMeta.model_validate(
             {
-                "is_feature": True,
                 "feature_type": "numeric",
                 "null_behavior": "zero",
                 "used_by": ["model_a", "model_b"],
@@ -99,29 +121,23 @@ class TestFeatureMeta:
         assert m.used_by == ["model_a", "model_b"]
 
     def test_strips_used_by(self) -> None:
-        m = FeatureMeta.model_validate(
-            {"is_feature": True, "used_by": [" a ", "", "b"]}
-        )
+        m = FeatureMeta.model_validate({"used_by": [" a ", "", "b"]})
         assert m.used_by == ["a", "b"]
 
     def test_invalid_feature_type_rejected(self) -> None:
         with pytest.raises(ValidationError):
-            FeatureMeta.model_validate({"is_feature": True, "feature_type": "complex_number"})
+            FeatureMeta.model_validate({"feature_type": "complex_number"})
 
     def test_extra_fields_rejected(self) -> None:
         with pytest.raises(ValidationError):
-            FeatureMeta.model_validate({"is_feature": True, "secret_field": True})
+            FeatureMeta.model_validate({"secret_field": True})
 
 
 class TestLifecycleAndVersion:
-    """Schema-only fields shipped in v0.1; behavior comes in v0.2.
-
-    The point of having these in the schema today is forward-compat:
-    users can declare them now without waiting for a breaking change.
-    """
+    """Schema fields for lifecycle / definition_version. Used by the renderer."""
 
     def test_defaults(self) -> None:
-        f = FeatureMeta.model_validate({"is_feature": True})
+        f = FeatureMeta.model_validate({})
         assert f.definition_version == 1
         assert f.lifecycle == Lifecycle.ACTIVE
         assert f.replacement is None
@@ -133,18 +149,18 @@ class TestLifecycleAndVersion:
 
     def test_definition_version_must_be_positive(self) -> None:
         with pytest.raises(ValidationError):
-            FeatureMeta.model_validate({"is_feature": True, "definition_version": 0})
+            FeatureMeta.model_validate({"definition_version": 0})
 
     def test_lifecycle_enum(self) -> None:
         f = FeatureMeta.model_validate(
-            {"is_feature": True, "lifecycle": "deprecated", "replacement": "new_feature"}
+            {"lifecycle": "deprecated", "replacement": "new_feature"}
         )
         assert f.lifecycle == Lifecycle.DEPRECATED
         assert f.replacement == "new_feature"
 
     def test_invalid_lifecycle_rejected(self) -> None:
         with pytest.raises(ValidationError):
-            FeatureMeta.model_validate({"is_feature": True, "lifecycle": "retired"})
+            FeatureMeta.model_validate({"lifecycle": "retired"})
 
     def test_table_level_preview(self) -> None:
         t = FeatureTableMeta.model_validate(
