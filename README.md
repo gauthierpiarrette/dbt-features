@@ -3,6 +3,7 @@
 [![tests](https://github.com/gauthierpiarrette/dbt-features/actions/workflows/test.yml/badge.svg)](https://github.com/gauthierpiarrette/dbt-features/actions/workflows/test.yml)
 [![demo](https://github.com/gauthierpiarrette/dbt-features/actions/workflows/deploy-demo.yml/badge.svg)](https://gauthierpiarrette.github.io/dbt-features/)
 [![python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
+[![coverage](https://img.shields.io/badge/coverage-88%25-brightgreen.svg)](https://github.com/gauthierpiarrette/dbt-features)
 [![license](https://img.shields.io/badge/license-Apache%202.0-green.svg)](./LICENSE)
 
 A **feature catalog** for ML teams whose features live as dbt models.
