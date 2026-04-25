@@ -2,7 +2,29 @@
 {% block content %}
 <section class="page-head">
   <h1>Lineage</h1>
-  <p class="lede">Feature-table-only graph. Edges show dependencies between feature tables; non-feature dependencies (sources, staging models) are intentionally hidden.</p>
+  <p class="lede">Feature-table-only graph, clustered by entity. Click a box to open its page; type a name to focus its 1-hop neighborhood.</p>
+</section>
+
+{% if not catalog.feature_groups %}
+<section class="empty">
+  <h2>Nothing to graph yet</h2>
+  <p>Mark dbt models as feature tables to see them appear here.</p>
+</section>
+{% else %}
+
+<section class="lineage-controls" aria-label="Lineage controls">
+  <div class="lineage-search">
+    <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="7" cy="7" r="4.5"/>
+      <path d="m13 13-2.5-2.5"/>
+    </svg>
+    <input id="lineage-search" type="search" placeholder="Focus a node — e.g. customer_features_daily" autocomplete="off">
+    <button type="button" class="link-btn" id="lineage-clear" hidden>Clear focus</button>
+  </div>
+  <div class="lineage-legend">
+    <span><span class="legend-dot" style="background:#79c0ff"></span> entity cluster</span>
+    <span><span class="legend-dot" style="background:#6ec78a"></span> click any node →</span>
+  </div>
 </section>
 
 <section class="lineage-graph">
@@ -15,74 +37,13 @@
     <pre><code>{{ mermaid_source }}</code></pre>
   </noscript>
 </section>
+
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
 {# Mermaid is bundled locally (see THIRD_PARTY_LICENSES.md). The catalog
    works offline, behind strict CSPs, and in air-gapped environments. #}
 <script src="{{ base_url }}/static/mermaid.min.js"></script>
-<script>
-  (function () {
-    var FONT_FAMILY = '-apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", Roboto, Helvetica, Arial, sans-serif';
-
-    function themeVars() {
-      var dark = document.documentElement.getAttribute("data-theme") !== "light";
-      // Palette mirrors style.css. Keep these in sync if the CSS variables move.
-      return dark ? {
-        primaryColor: "#1f3653",
-        primaryTextColor: "#e6edf3",
-        primaryBorderColor: "#2f81f7",
-        lineColor: "#8b949e",
-        mainBkg: "#1f3653",
-        background: "transparent",
-        edgeLabelBackground: "#161b22",
-        clusterBkg: "#161b22",
-        clusterBorder: "#30363d",
-        fontFamily: FONT_FAMILY,
-        fontSize: "14px",
-      } : {
-        primaryColor: "#ddf4ff",
-        primaryTextColor: "#1f2328",
-        primaryBorderColor: "#0969da",
-        lineColor: "#6a737d",
-        mainBkg: "#ddf4ff",
-        background: "transparent",
-        edgeLabelBackground: "#f7f8fa",
-        clusterBkg: "#f7f8fa",
-        clusterBorder: "#e1e4e8",
-        fontFamily: FONT_FAMILY,
-        fontSize: "14px",
-      };
-    }
-
-    function render() {
-      var host = document.getElementById("mermaid-host");
-      var tmpl = document.getElementById("mermaid-source");
-      if (!host || !tmpl) return;
-      host.innerHTML = "";
-      host.appendChild(tmpl.content.cloneNode(true));
-      window.mermaid.initialize({
-        startOnLoad: false,
-        securityLevel: "loose",
-        theme: "base",
-        themeVariables: themeVars(),
-        flowchart: { curve: "basis", padding: 18, nodeSpacing: 40, rankSpacing: 60 },
-      });
-      window.mermaid.run({ nodes: host.querySelectorAll(".mermaid") });
-    }
-
-    render();
-
-    // Re-render when the theme toggle flips data-theme on <html>.
-    var observer = new MutationObserver(function (mutations) {
-      for (var i = 0; i < mutations.length; i++) {
-        if (mutations[i].attributeName === "data-theme") {
-          render();
-          break;
-        }
-      }
-    });
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-  })();
-</script>
+<script src="{{ base_url }}/static/lineage.js" defer></script>
 {% endblock %}
