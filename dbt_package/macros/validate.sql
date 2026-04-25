@@ -15,7 +15,7 @@
 {% macro feature_catalog__validate() %}
     {% set known_table_keys = [
         'is_feature_table', 'version', 'entity', 'grain', 'timestamp_column',
-        'freshness', 'owner', 'tags', 'description',
+        'exclude_columns', 'freshness', 'owner', 'tags', 'description',
         'definition_version', 'lifecycle', 'replacement'
     ] %}
     {% set known_feature_keys = [
