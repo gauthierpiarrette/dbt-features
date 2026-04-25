@@ -24,7 +24,8 @@ this project adheres to [Semantic Versioning](https://semver.org/).
   validation.
 
 ### Not yet implemented
-- Warehouse-backed freshness checks (planned for v0.2). The freshness SLA
-  fields are accepted, validated, and rendered today but not queried.
+- Snowflake and BigQuery enrichment adapters — coming next. The
+  warehouse-enrichment subsystem ships today with DuckDB, Postgres, and
+  Redshift (including IAM auth) adapters.
 - Auto-derivation of `used_by` from dbt lineage / model registries.
 - Multi-project federation.

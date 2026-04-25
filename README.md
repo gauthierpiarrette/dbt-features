@@ -159,8 +159,33 @@ These are real feature requests; the answer is "no, with reason":
 - A web UI for editing metadata (edit your `schema.yml`).
 - A hosted SaaS.
 
-Warehouse-backed freshness checks (querying `MAX(timestamp_column)`) are
-planned for v0.2. The `freshness` SLA fields render as configuration today.
+## Warehouse enrichment (optional)
+
+When you pass `--connection <profile>`, the catalog reads `~/.dbt/profiles.yml`,
+runs read-only queries against your warehouse, and renders **actual freshness**
+(green/yellow/red badge), row counts, null %, and per-feature cardinality.
+Without `--connection`, the catalog falls back to declared metadata only.
+
+Install the extra for your warehouse:
+
+```bash
+pip install 'dbt-features[duckdb]'      # local dev / dbt-duckdb projects
+pip install 'dbt-features[postgres]'    # Postgres
+pip install 'dbt-features[redshift]'    # Redshift (password or IAM auth)
+# Snowflake / BigQuery — coming next
+```
+
+Then:
+
+```bash
+dbt-features build --connection prod --output ./catalog
+# Subsequent rebuilds reuse the cached results (1h TTL by default).
+# Pass --cache-ttl 0 to force a refresh, --no-cache to skip caching.
+```
+
+The cache lives at `<output>/.cache/enrichment.json` and survives `--clean`
+rebuilds — running `dbt-features build` without `--connection` will still
+reuse the cached enrichment until it expires.
 
 ## Companion dbt package
 

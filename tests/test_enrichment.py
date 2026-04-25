@@ -395,7 +395,7 @@ demo:
   target: dev
   outputs:
     dev:
-      type: redshift
+      type: oracle
       host: x
       user: y
 """,
