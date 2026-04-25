@@ -6,6 +6,39 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.0] - Auto-include feature columns
+
+### Changed (breaking)
+- **Column inclusion is now automatic.** Marking a model with
+  `is_feature_table: true` is the only opt-in needed; every column on the
+  model becomes a feature *unless* it appears in `entity`, `grain`,
+  `timestamp_column`, or the new `exclude_columns` list, or its column
+  block sets `is_feature: false`. The old per-column `is_feature: true`
+  flag is gone — column blocks are now pure overrides.
+
+### Migration
+1. Remove `is_feature: true` from your column meta blocks — it's now a
+   no-op (still accepted, but redundant).
+2. Optionally add `exclude_columns: [...]` at the table level for
+   internal columns (`_loaded_at`, `_batch_id`, debug scratch, etc.).
+3. To exclude a single column without listing it at table level, set
+   `is_feature: false` on the column.
+4. Existing column overrides (`feature_type`, `used_by`, `null_behavior`,
+   `lifecycle`, `replacement`, `definition_version`) keep working
+   unchanged.
+
+### Added
+- `exclude_columns` field on `FeatureTableMeta` for table-level column
+  exclusion.
+- `feature_type` is now **inferred** from the warehouse `data_type` when
+  not declared. Conservative mapping: `INT*`/`FLOAT*`/`DECIMAL` ->
+  `numeric`, `BOOL` -> `boolean`, `DATE`/`TIMESTAMP` -> `timestamp`,
+  `ARRAY`/`VECTOR` -> `embedding`. `VARCHAR`/`TEXT` left unspecified
+  (override if needed).
+- Schema bumped to `0.2`.
+
+## [0.1.x] - Warehouse enrichment
+
 ### Added
 - **Warehouse enrichment** (`--connection PROFILE` on `build`):
   - DuckDB, Postgres, Redshift (password + IAM), Snowflake (password,

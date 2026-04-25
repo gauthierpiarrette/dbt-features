@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "dbt-features"
-version = "0.1.0"
+version = "0.2.0"
 description = "A feature catalog for ML teams whose features live as dbt models."
 readme = "README.md"
 license = { file = "LICENSE" }
