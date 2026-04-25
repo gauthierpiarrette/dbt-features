@@ -5,13 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ page_title }}</title>
   <link rel="icon" type="image/svg+xml" href="{{ base_url }}/static/favicon.svg">
-  {# Pre-paint theme init: dark is the default. If the user previously chose
-     light, set data-theme="light" BEFORE the stylesheet applies so they
-     don't see a flash of dark theme. #}
+  {# Pre-paint theme init: two-state (dark default, light opt-in).
+     Resolved before the stylesheet loads so users never see a flash
+     of the wrong theme. #}
   <script>
     (function () {
       try {
-        if (localStorage.getItem("dbt-features-theme") === "light") {
+        var pref = localStorage.getItem("dbt-features-theme") || "dark";
+        if (pref === "light") {
           document.documentElement.setAttribute("data-theme", "light");
         }
       } catch (e) {}
@@ -22,26 +23,67 @@
 <body>
   <header class="site-header">
     <div class="header-inner">
-      <a class="brand" href="{{ base_url }}/index.html">{{ catalog.project_name }} <span class="brand-tag">feature catalog</span></a>
-      <nav>
-        <a href="{{ base_url }}/index.html">Index</a>
+      <a class="brand" href="{{ base_url }}/index.html">
+        <svg class="brand-mark" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <rect x="3" y="3" width="8" height="8" rx="1.5" fill="currentColor" opacity="0.85"/>
+          <rect x="13" y="3" width="8" height="8" rx="1.5" fill="currentColor" opacity="0.55"/>
+          <rect x="3" y="13" width="8" height="8" rx="1.5" fill="currentColor" opacity="0.55"/>
+          <rect x="13" y="13" width="8" height="8" rx="1.5" fill="currentColor" opacity="0.85"/>
+        </svg>
+        <span class="brand-name">{{ catalog.project_name }}</span>
+        <span class="brand-tag">feature catalog</span>
+      </a>
+      <nav class="primary-nav">
+        <a href="{{ base_url }}/index.html">Features</a>
+        {% if catalog.all_models %}<a href="{{ base_url }}/models/index.html">Models</a>{% endif %}
         <a href="{{ base_url }}/lineage.html">Lineage</a>
-        <button id="theme-toggle" type="button" class="theme-toggle" aria-label="Toggle dark mode" title="Toggle theme">
-          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      </nav>
+      <div class="header-tools">
+        <button id="search-trigger" type="button" class="search-trigger" aria-label="Search (press /)">
+          <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="7" cy="7" r="4.5"/>
+            <path d="m13 13-2.5-2.5"/>
+          </svg>
+          <span>Search</span>
+          <kbd>/</kbd>
+        </button>
+        <button id="theme-toggle" type="button" class="theme-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">
+          <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <circle cx="12" cy="12" r="4"/>
             <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
           </svg>
-          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <svg class="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
           </svg>
         </button>
-      </nav>
-    </div>
-    <div class="search-wrap" role="search">
-      <input id="search-input" type="search" placeholder="Search features and groups… (press /)" autocomplete="off" aria-label="Search features and groups" aria-controls="search-results" aria-expanded="false">
-      <ul id="search-results" role="listbox" aria-label="Search results" hidden></ul>
+      </div>
     </div>
   </header>
+
+  {# Cmd-K-style search modal. Hidden by default, opened by the trigger
+     above or the "/" shortcut. The page below remains scrollable when
+     the modal is closed; trapping focus is handled in search.js. #}
+  <div id="search-dialog" class="search-dialog" role="dialog" aria-modal="true" aria-labelledby="search-dialog-label" hidden>
+    <div class="search-dialog-backdrop" data-close></div>
+    <div class="search-dialog-panel">
+      <div class="search-dialog-input-row">
+        <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="7" cy="7" r="4.5"/>
+          <path d="m13 13-2.5-2.5"/>
+        </svg>
+        <input id="search-input" type="search" placeholder="Search features, groups, models — try type:numeric" autocomplete="off" aria-label="Search" aria-controls="search-results" aria-expanded="false">
+        <kbd class="search-dismiss" data-close title="Close">esc</kbd>
+      </div>
+      <ul id="search-results" role="listbox" aria-label="Search results"></ul>
+      <div class="search-dialog-hint">
+        <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+        <span><kbd>↵</kbd> open</span>
+        <span><kbd>esc</kbd> dismiss</span>
+        <span class="muted">tip: <code>type:numeric</code></span>
+      </div>
+    </div>
+  </div>
+
   <main class="container">
     {% block content %}{% endblock %}
   </main>
