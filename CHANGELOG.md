@@ -6,6 +6,21 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-04-26 - Exposure-aware column tracing
+
+### Added
+- **Auto-derive `used_by` from dbt exposures.** ML exposures (`type: ml`)
+  in the manifest are traced through the dependency graph to find consumed
+  feature tables. Every feature in those tables automatically gains the
+  exposure name in its `used_by` list — no manual annotation needed. Manual
+  `used_by` entries are preserved and merged with auto-derived ones.
+- **Exposure metadata on model pages.** Model pages now show description,
+  owner (name + email), maturity badge, and external URL when the model
+  originates from a dbt exposure. The models index distinguishes
+  exposure-derived vs manually declared consumers.
+- **`ExposureInfo` dataclass** on `Catalog` for programmatic access to
+  exposure metadata.
+
 ## [0.3.1] - 2026-04-26
 
 ### Fixed
