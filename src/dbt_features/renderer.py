@@ -117,7 +117,7 @@ def render_catalog(
         models_index_html = env.get_template("models_index.html").render(
             catalog=catalog,
             page_title=f"Models — {catalog.project_name}",
-            base_url=".",
+            base_url="..",
             features_by_model=features_by_model,
             enrichment=enrichment,
             entity_palette=entity_palette,
