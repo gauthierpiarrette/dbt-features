@@ -102,9 +102,15 @@ def run_group_query(
 
 
 def _quote_inner(identifier: str) -> str:
-    """Escape any inner double-quotes for use inside a quoted identifier."""
+    """Escape any inner double-quotes for use inside a quoted identifier.
 
-    return identifier.replace('"', '""')
+    Strips existing outer quotes first — some manifests carry column names
+    like ``"T"`` (pre-quoted from YAML), which would otherwise become
+    ``""T""`` and fail on Redshift.
+    """
+
+    stripped = identifier.strip('"')
+    return stripped.replace('"', '""')
 
 
 def _int_or_none(value: object) -> int | None:
