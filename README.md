@@ -63,6 +63,19 @@ dbt-features build --connection my_profile --output ./catalog
 dbt-features serve --output ./catalog
 ```
 
+For production (with type inference and correct schemas):
+
+```bash
+dbt docs generate                              # populates catalog.json with column types
+dbt-features build \
+    --manifest target/manifest.json \
+    --catalog target/catalog.json \
+    --connection my_profile --target prod \
+    --output ./catalog
+```
+
+See [Production setup](docs/enrichment.md#production-setup) for details.
+
 ## What it does
 
 - Reads your dbt manifest and finds models marked `is_feature_table: true`.
