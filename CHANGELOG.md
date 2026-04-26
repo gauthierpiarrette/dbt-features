@@ -6,6 +6,13 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-04-26
+
+### Fixed
+- **Models index page styling.** The models index page had a broken
+  `base_url`, causing CSS and navigation links to fail. Now renders
+  with the correct theme and layout.
+
 ## [0.4.0] - 2026-04-26 - Exposure-aware column tracing
 
 ### Added
