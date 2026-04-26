@@ -219,5 +219,28 @@
       "unique_id": "source.jaffle_features.raw.orders",
       "resource_type": "source"
     }
+  },
+  "exposures": {
+    "exposure.jaffle_features.churn_scoring_model": {
+      "name": "churn_scoring_model",
+      "unique_id": "exposure.jaffle_features.churn_scoring_model",
+      "type": "ml",
+      "owner": {"name": "ML Platform Team", "email": "ml-platform@jaffle.com"},
+      "maturity": "high",
+      "url": "https://mlflow.jaffle.com/models/churn",
+      "description": "Churn prediction model used in the retention flow",
+      "depends_on": {
+        "nodes": ["model.jaffle_features.consumer_dashboard_metrics"]
+      }
+    },
+    "exposure.jaffle_features.bi_dashboard": {
+      "name": "bi_dashboard",
+      "unique_id": "exposure.jaffle_features.bi_dashboard",
+      "type": "dashboard",
+      "owner": {"name": "Analytics Team"},
+      "depends_on": {
+        "nodes": ["model.jaffle_features.consumer_dashboard_metrics"]
+      }
+    }
   }
 }

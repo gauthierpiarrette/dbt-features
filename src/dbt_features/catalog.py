@@ -22,6 +22,24 @@ from dbt_features.schema import (
 
 
 @dataclass(frozen=True, slots=True)
+class ExposureInfo:
+    """Metadata for an ML exposure auto-derived from the dbt manifest.
+
+    Stored on the catalog and keyed by exposure name so model pages can
+    render richer metadata (owner, maturity, url) than what ``used_by``
+    alone provides.
+    """
+
+    name: str
+    description: str
+    owner_name: str | None
+    owner_email: str | None
+    maturity: str | None
+    url: str | None
+    exposure_type: str | None
+
+
+@dataclass(frozen=True, slots=True)
 class Feature:
     name: str
     description: str
@@ -120,6 +138,7 @@ class Catalog:
     project_name: str
     feature_groups: tuple[FeatureGroup, ...]
     generated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    exposure_info: dict[str, ExposureInfo] = field(default_factory=dict)
 
     @property
     def feature_count(self) -> int:

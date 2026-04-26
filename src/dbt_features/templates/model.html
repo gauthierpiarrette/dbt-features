@@ -8,14 +8,23 @@
   <span aria-current="page">{{ model_name }}</span>
 </nav>
 
+{% set exp = catalog.exposure_info.get(model_name) %}
 <section class="page-head">
   <div class="page-title-row">
     <h1><code class="title-code">{{ model_name }}</code></h1>
     <div class="badges">
-      <span class="badge">model</span>
+      {% if exp %}<span class="badge">exposure</span>{% else %}<span class="badge">model</span>{% endif %}
+      {% if exp and exp.maturity %}<span class="badge">{{ exp.maturity }}</span>{% endif %}
     </div>
   </div>
+  {% if exp and exp.description %}
+  <p class="lede">{{ exp.description }}</p>
+  {% else %}
   <p class="lede">Inverted view: every feature this model declares as input via <code>used_by</code>.</p>
+  {% endif %}
+  {% if exp and exp.url %}
+  <p><a href="{{ exp.url }}" class="muted small" target="_blank" rel="noopener">{{ exp.url }}</a></p>
+  {% endif %}
 </section>
 
 {% if has_enrichment %}
@@ -40,6 +49,7 @@
     <dl class="info-pairs">
       <div><dt>Feature groups</dt><dd>{{ groups|length }}</dd></div>
       <div><dt>Features</dt><dd>{% set total_features = groups | map(attribute=1) | map('length') | sum %}{{ total_features }}</dd></div>
+      {% if exp %}<div><dt>Source</dt><dd>dbt exposure</dd></div>{% endif %}
     </dl>
   </div>
   {% if entities %}
@@ -50,14 +60,13 @@
     </dl>
   </div>
   {% endif %}
-  {% if owners %}
   <div class="info-block">
-    <h3 class="info-block-title">Owners</h3>
+    <h3 class="info-block-title">Ownership</h3>
     <dl class="info-pairs">
-      <div><dt>Producing teams</dt><dd>{% for o in owners %}{{ o }}{% if not loop.last %} · {% endif %}{% endfor %}</dd></div>
+      {% if exp and exp.owner_name %}<div><dt>Model owner</dt><dd>{{ exp.owner_name }}{% if exp.owner_email %} <span class="muted small">({{ exp.owner_email }})</span>{% endif %}</dd></div>{% endif %}
+      {% if owners %}<div><dt>Producing teams</dt><dd>{% for o in owners %}{{ o }}{% if not loop.last %} · {% endif %}{% endfor %}</dd></div>{% endif %}
     </dl>
   </div>
-  {% endif %}
 </section>
 
 <section>

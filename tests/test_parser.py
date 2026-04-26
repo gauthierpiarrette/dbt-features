@@ -307,6 +307,63 @@ def test_feature_table_with_no_structural_metadata_includes_all_columns(tmp_path
     assert {f.name for f in cat.feature_groups[0].features} == {"a", "b"}
 
 
+def test_exposure_tracing_populates_used_by(project_dir: Path) -> None:
+    """ML exposures auto-derive used_by on features via graph traversal.
+
+    The fixture has churn_scoring_model (type: ml) depending on
+    consumer_dashboard_metrics, which depends on customer_features_daily.
+    Every feature in customer_features_daily should gain churn_scoring_model
+    in its used_by.
+    """
+
+    cat = parse_project(project_dir)
+    daily = next(g for g in cat.feature_groups if g.name == "customer_features_daily")
+    for feature in daily.features:
+        assert "churn_scoring_model" in feature.used_by, (
+            f"{feature.name} missing exposure-derived used_by"
+        )
+
+
+def test_exposure_tracing_preserves_manual_used_by(project_dir: Path) -> None:
+    """Manual used_by entries are preserved alongside auto-derived ones."""
+
+    cat = parse_project(project_dir)
+    daily = next(g for g in cat.feature_groups if g.name == "customer_features_daily")
+    orders = next(f for f in daily.features if f.name == "orders_count_7d")
+    assert "churn_model_v2" in orders.used_by
+    assert "ltv_model_v3" in orders.used_by
+    assert "churn_scoring_model" in orders.used_by
+
+
+def test_non_ml_exposures_ignored(project_dir: Path) -> None:
+    """Exposures with type != 'ml' should not affect feature used_by."""
+
+    cat = parse_project(project_dir)
+    daily = next(g for g in cat.feature_groups if g.name == "customer_features_daily")
+    for feature in daily.features:
+        assert "bi_dashboard" not in feature.used_by
+
+
+def test_exposure_info_on_catalog(project_dir: Path) -> None:
+    """ML exposure metadata is stored on the catalog for model pages."""
+
+    cat = parse_project(project_dir)
+    assert "churn_scoring_model" in cat.exposure_info
+    info = cat.exposure_info["churn_scoring_model"]
+    assert info.owner_name == "ML Platform Team"
+    assert info.owner_email == "ml-platform@jaffle.com"
+    assert info.maturity == "high"
+    assert info.url == "https://mlflow.jaffle.com/models/churn"
+    assert "bi_dashboard" not in cat.exposure_info
+
+
+def test_exposure_derived_models_appear_in_all_models(project_dir: Path) -> None:
+    """Exposure-derived used_by entries appear in catalog.all_models."""
+
+    cat = parse_project(project_dir)
+    assert "churn_scoring_model" in cat.all_models
+
+
 def test_all_tags_aggregated(project_dir: Path) -> None:
     cat = parse_project(project_dir)
     assert cat.all_tags == ["customer", "daily", "lifetime"]

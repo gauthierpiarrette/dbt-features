@@ -8,26 +8,43 @@
 
 <section class="page-head">
   <h1>ML models</h1>
-  <p class="lede">Models declared as consumers via <code>meta.feature_catalog.used_by</code> on individual feature columns. Each page lists the features that model reads.</p>
+  <p class="lede">
+    {% if catalog.exposure_info %}
+    ML model consumers auto-derived from dbt <code>exposures</code> and manual <code>used_by</code> declarations.
+    {% else %}
+    Models declared as consumers via <code>meta.feature_catalog.used_by</code> on individual feature columns.
+    {% endif %}
+    Each page lists the features that model reads.
+  </p>
 </section>
 
 {% if not features_by_model %}
 <section class="empty">
   <h2>No declared consumers</h2>
-  <p>Add <code>meta.feature_catalog.used_by: [my_model]</code> to a feature column to populate this page.</p>
+  <p>Add <code>type: ml</code> exposures to your dbt project, or set <code>meta.feature_catalog.used_by: [model]</code> on feature columns.</p>
 </section>
 {% else %}
 <div class="card-grid">
   {% for model_name, entries in features_by_model.items() %}
   {% set group_count = (entries | map(attribute=0) | map(attribute='unique_id') | unique | list | length) %}
+  {% set exp = catalog.exposure_info.get(model_name) %}
   <a class="card" href="{{ model_url(model_name, base_url=base_url) }}">
     <div class="card-head">
       <div class="card-title">
         <h3><code>{{ model_name }}</code></h3>
+        {% if exp and exp.maturity %}<span class="badge">{{ exp.maturity }}</span>{% endif %}
       </div>
       <span class="card-feature-count">{{ entries|length }}<span class="muted small">{{ ' feature' if entries|length == 1 else ' features' }}</span></span>
     </div>
+    {% if exp and exp.description %}
+    <p class="card-desc">{{ exp.description }}</p>
+    {% else %}
     <p class="card-desc muted">From {{ group_count }} feature group{{ '' if group_count == 1 else 's' }}.</p>
+    {% endif %}
+    <div class="card-meta">
+      {% if exp and exp.owner_name %}<span class="card-chip muted small">{{ exp.owner_name }}</span>{% endif %}
+      {% if exp %}<span class="card-chip muted small">exposure</span>{% else %}<span class="card-chip muted small">manual</span>{% endif %}
+    </div>
   </a>
   {% endfor %}
 </div>

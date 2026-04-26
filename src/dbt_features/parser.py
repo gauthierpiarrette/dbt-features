@@ -19,7 +19,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from dbt_features.catalog import Catalog, Feature, FeatureGroup, LineageRef
+from dbt_features.catalog import Catalog, ExposureInfo, Feature, FeatureGroup, LineageRef
 from dbt_features.inference import infer_feature_type
 from dbt_features.schema import (
     FeatureMeta,
@@ -69,6 +69,7 @@ def _load_json(path: Path) -> dict[str, Any]:
 def _build_catalog(manifest: dict[str, Any], dbt_catalog: dict[str, Any] | None) -> Catalog:
     nodes: dict[str, Any] = manifest.get("nodes", {})
     sources: dict[str, Any] = manifest.get("sources", {})
+    exposures: dict[str, Any] = manifest.get("exposures", {})
     project_name = manifest.get("metadata", {}).get("project_name") or "dbt-project"
 
     catalog_nodes: dict[str, Any] = {}
@@ -107,11 +108,20 @@ def _build_catalog(manifest: dict[str, Any], dbt_catalog: dict[str, Any] | None)
         for dep in node.get("depends_on", {}).get("nodes", []) or []:
             children_of.setdefault(dep, []).append(unique_id)
 
-    # Pass 3: assemble FeatureGroup objects.
+    # Pass 3: resolve ML exposure → feature table mapping via graph
+    # traversal. For each `type: ml` exposure, walk its dependency graph
+    # upstream until we reach feature tables. The exposure name becomes an
+    # auto-derived `used_by` entry on every feature in those tables.
+    exposure_consumers, exposure_info = _resolve_exposure_consumers(
+        exposures, nodes, set(feature_table_nodes.keys())
+    )
+
+    # Pass 4: assemble FeatureGroup objects.
     feature_groups: list[FeatureGroup] = []
     for unique_id, node in feature_table_nodes.items():
         meta = feature_table_metas[unique_id]
-        features = _build_features(unique_id, node, catalog_nodes, meta)
+        auto_consumers = exposure_consumers.get(unique_id, ())
+        features = _build_features(unique_id, node, catalog_nodes, meta, auto_consumers)
         upstream = _resolve_lineage(
             node.get("depends_on", {}).get("nodes", []) or [],
             nodes,
@@ -143,7 +153,78 @@ def _build_catalog(manifest: dict[str, Any], dbt_catalog: dict[str, Any] | None)
         )
 
     feature_groups.sort(key=lambda g: g.name)
-    return Catalog(project_name=project_name, feature_groups=tuple(feature_groups))
+    return Catalog(
+        project_name=project_name,
+        feature_groups=tuple(feature_groups),
+        exposure_info=exposure_info,
+    )
+
+
+def _resolve_exposure_consumers(
+    exposures: dict[str, Any],
+    nodes: dict[str, Any],
+    feature_table_ids: set[str],
+) -> tuple[dict[str, tuple[str, ...]], dict[str, ExposureInfo]]:
+    """Walk the dbt graph from ML exposures to find consumed feature tables.
+
+    Returns:
+        - A map of ``feature_table_unique_id -> (exposure_name, ...)`` for
+          auto-populating ``used_by`` on features.
+        - A map of ``exposure_name -> ExposureInfo`` for model page metadata.
+    """
+
+    consumers: dict[str, set[str]] = {}
+    info: dict[str, ExposureInfo] = {}
+
+    for _uid, exp in exposures.items():
+        if exp.get("type") != "ml":
+            continue
+        name = exp.get("name", "")
+        if not name:
+            continue
+
+        owner = exp.get("owner") or {}
+        info[name] = ExposureInfo(
+            name=name,
+            description=exp.get("description") or "",
+            owner_name=owner.get("name"),
+            owner_email=owner.get("email"),
+            maturity=exp.get("maturity"),
+            url=exp.get("url"),
+            exposure_type=exp.get("type"),
+        )
+
+        dep_ids = exp.get("depends_on", {}).get("nodes", []) or []
+        reachable = _find_reachable_feature_tables(dep_ids, nodes, feature_table_ids)
+        for ft_id in reachable:
+            consumers.setdefault(ft_id, set()).add(name)
+
+    return {k: tuple(sorted(v)) for k, v in consumers.items()}, info
+
+
+def _find_reachable_feature_tables(
+    start_ids: list[str],
+    nodes: dict[str, Any],
+    feature_table_ids: set[str],
+) -> set[str]:
+    """BFS from ``start_ids`` through upstream dependencies to find feature tables."""
+
+    visited: set[str] = set()
+    queue = list(start_ids)
+    found: set[str] = set()
+    while queue:
+        uid = queue.pop(0)
+        if uid in visited:
+            continue
+        visited.add(uid)
+        if uid in feature_table_ids:
+            found.add(uid)
+        node = nodes.get(uid)
+        if node:
+            for dep in node.get("depends_on", {}).get("nodes", []) or []:
+                if dep not in visited:
+                    queue.append(dep)
+    return found
 
 
 def _feature_catalog_meta(node: dict[str, Any]) -> dict[str, Any] | None:
@@ -175,6 +256,7 @@ def _build_features(
     node: dict[str, Any],
     catalog_nodes: dict[str, Any],
     table_meta: FeatureTableMeta,
+    exposure_consumers: tuple[str, ...] = (),
 ) -> tuple[Feature, ...]:
     """Derive features from a feature-table node.
 
@@ -188,6 +270,9 @@ def _build_features(
     the user hasn't specified one. The inference is conservative (numeric /
     boolean / timestamp / embedding only); ambiguous warehouse types like
     VARCHAR stay unspecified.
+
+    ``exposure_consumers`` are model names auto-derived from dbt exposures.
+    They are merged with any manually declared ``used_by`` entries.
     """
 
     columns: dict[str, Any] = node.get("columns") or {}
@@ -234,6 +319,7 @@ def _build_features(
         description = f_meta.description or col.get("description") or ""
         column_tags = list(col.get("tags") or [])
 
+        used_by = tuple(sorted(set(f_meta.used_by) | set(exposure_consumers)))
         features.append(
             Feature(
                 name=col_name,
@@ -241,7 +327,7 @@ def _build_features(
                 column_type=column_type,
                 feature_type=feature_type,
                 null_behavior=f_meta.null_behavior,
-                used_by=tuple(f_meta.used_by),
+                used_by=used_by,
                 tags=tuple(column_tags),
                 definition_version=f_meta.definition_version,
                 lifecycle=f_meta.lifecycle,

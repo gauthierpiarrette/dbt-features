@@ -197,13 +197,22 @@ FROM {{ ref('{% endraw %}{{ group.name }}{% raw %}') }}{% endraw %}</code></pre>
       {% else %}<p class="muted">None.</p>{% endif %}
     </div>
     <div class="lineage-col">
-      <h3>Declared ML consumers <span class="muted small">{{ declared_consumers|length }}</span></h3>
+      <h3>ML consumers <span class="muted small">{{ declared_consumers|length }}</span></h3>
       {% if declared_consumers %}
       <ul class="lineage-list">
-        {% for c in declared_consumers %}<li><a href="{{ model_url(c, base_url=base_url) }}"><code>{{ c }}</code></a></li>{% endfor %}
+        {% for c in declared_consumers %}
+        <li>
+          <a href="{{ model_url(c, base_url=base_url) }}"><code>{{ c }}</code></a>
+          {% if c in catalog.exposure_info %}<span class="muted small">exposure</span>{% else %}<span class="muted small">manual</span>{% endif %}
+        </li>
+        {% endfor %}
       </ul>
+      {% if catalog.exposure_info %}
+      <p class="muted small">Auto-derived from dbt <code>exposures</code> and manual <code>used_by</code>.</p>
+      {% else %}
       <p class="muted small">Declared manually via <code>used_by</code> on individual features.</p>
-      {% else %}<p class="muted">None declared.</p>{% endif %}
+      {% endif %}
+      {% else %}<p class="muted">None declared. Add <code>type: ml</code> exposures or set <code>used_by</code> on features.</p>{% endif %}
     </div>
   </div>
 </section>
