@@ -630,11 +630,10 @@ def _model_url(model_name: str, base_url: str = ".") -> str:
 
 
 def _lineage_mermaid(catalog: Catalog) -> str:
-    """Build a Mermaid flowchart scoped to feature tables.
+    """Build a Mermaid flowchart showing feature tables and their consumers.
 
-    Clusters by primary entity so the picture stays legible at scale.
-    Non-feature dependencies are intentionally hidden — a full dbt
-    graph belongs in dbt-docs, not here.
+    Clusters feature tables by primary entity, then adds downstream
+    consumer models and ML exposures on the right side of the graph.
     """
 
     if not catalog.feature_groups:
@@ -642,9 +641,6 @@ def _lineage_mermaid(catalog: Catalog) -> str:
 
     lines = ["flowchart LR"]
 
-    # Bucket each group by primary entity so we can render Mermaid
-    # subgraphs. Keeps the diagram readable when the catalog has many
-    # tables across only a few entities.
     buckets: dict[str, list[FeatureGroup]] = {}
     for g in catalog.feature_groups:
         ents = g.entity_columns
@@ -676,7 +672,7 @@ def _lineage_mermaid(catalog: Catalog) -> str:
                 seen.add(nid)
         lines.append("    end")
 
-    # Now record edges between feature tables across (and within) buckets.
+    # Edges between feature tables.
     for group in catalog.feature_groups:
         node_id = _mermaid_id(group.unique_id)
         for upstream in group.upstream:
@@ -684,15 +680,45 @@ def _lineage_mermaid(catalog: Catalog) -> str:
                 continue
             up_id = _mermaid_id(upstream.unique_id)
             if up_id not in seen:
-                # Upstream feature table that isn't itself in our catalog
-                # — render as a free-floating node so the edge has somewhere
-                # to terminate.
                 lines.append(f'    {up_id}["{_mermaid_escape(upstream.name)}"]')
                 lines.append(
                     f'    click {up_id} href "groups/{slugify(upstream.name)}/index.html"'
                 )
                 seen.add(up_id)
             edges.append(f"    {up_id} --> {node_id}")
+
+    # Downstream consumer models (non-feature-table dependents).
+    downstream_models: set[str] = set()
+    for group in catalog.feature_groups:
+        node_id = _mermaid_id(group.unique_id)
+        for ref in group.downstream:
+            if ref.is_feature_table or ref.resource_type == "test":
+                continue
+            ref_id = _mermaid_id(ref.unique_id)
+            if ref_id not in seen:
+                lines.append(f'    {ref_id}(["{_mermaid_escape(ref.name)}"])')
+                seen.add(ref_id)
+                downstream_models.add(ref_id)
+            edges.append(f"    {node_id} --> {ref_id}")
+
+    # ML exposure consumers from the catalog.
+    consumer_names: dict[str, set[str]] = {}
+    for group in catalog.feature_groups:
+        for f in group.features:
+            for m in f.used_by:
+                consumer_names.setdefault(m, set()).add(group.unique_id)
+    for model_name, source_ids in consumer_names.items():
+        mid = _mermaid_id(f"model.{model_name}")
+        if mid not in seen:
+            lines.append(f'    {mid}>{{"\\"{_mermaid_escape(model_name)}\\""}}')
+            lines.append(
+                f'    click {mid} href "models/{slugify(model_name)}/index.html"'
+            )
+            seen.add(mid)
+        for src_id in source_ids:
+            edge = f"    {_mermaid_id(src_id)} -.-> {mid}"
+            if edge not in edges:
+                edges.append(edge)
 
     lines.extend(edges)
     return "\n".join(lines)
