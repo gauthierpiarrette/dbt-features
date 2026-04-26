@@ -275,6 +275,18 @@ dbt-features build \
     --connection prod
 ```
 
+If `dbt docs generate` fails on unrelated models (e.g., missing
+dependencies in other parts of the project), scope it to your feature
+tables:
+
+```bash
+dbt docs generate --select tag:is_feature_table   # or use a path selector
+dbt docs generate --select models/features/       # only feature models
+```
+
+This produces a `catalog.json` with just the models you need, avoiding
+compilation errors in unrelated parts of the project.
+
 Explicit `feature_type` in your YAML always takes precedence over inference.
 See the [schema docs](schema.md) for supported types.
 
