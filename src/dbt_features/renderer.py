@@ -178,6 +178,17 @@ def _register_globals(env: Environment) -> None:
     env.filters["slugify"] = slugify
     env.filters["humanize_count"] = humanize_count
     env.filters["humanize_percent"] = humanize_percent
+    env.filters["first_paragraph"] = _first_paragraph
+
+
+def _first_paragraph(text: str, max_chars: int = 200) -> str:
+    """Return the first paragraph of ``text``, capped at ``max_chars``."""
+
+    para = text.split("\n\n", 1)[0].strip()
+    if len(para) <= max_chars:
+        return para
+    cut = para[:max_chars].rsplit(" ", 1)[0]
+    return cut + " …"
 
 
 def _render_group(

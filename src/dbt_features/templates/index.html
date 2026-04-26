@@ -167,7 +167,7 @@
           </div>
           <span class="card-feature-count">{{ group.features|length }}<span class="muted small">{{ ' feature' if group.features|length == 1 else ' features' }}</span></span>
         </div>
-        {% if group.description %}<p class="card-desc">{{ group.description }}</p>{% endif %}
+        {% if group.description %}<p class="card-desc">{{ group.description | first_paragraph }}</p>{% endif %}
         <div class="card-meta">
           {% if group.entity_columns %}
             {% for c in group.entity_columns %}<span class="card-chip card-chip-entity"><code>{{ c }}</code></span>{% endfor %}
