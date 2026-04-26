@@ -56,8 +56,11 @@ class SnowflakeAdapter:
             "warehouse": profile.get("warehouse"),
             "role": profile.get("role"),
             "schema": profile.get("schema"),
-            # Kill long-running idle connections — we're a one-shot tool.
-            "login_timeout": int(profile.get("login_timeout", 30)),
+            "login_timeout": int(
+                profile.get("_enrichment_timeout")
+                or profile.get("login_timeout")
+                or 120
+            ),
             # Tag every query so DBAs can spot us in QUERY_HISTORY.
             "session_parameters": {
                 "QUERY_TAG": profile.get("query_tag", "dbt-features-enrichment"),

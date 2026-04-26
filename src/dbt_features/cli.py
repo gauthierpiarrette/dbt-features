@@ -104,6 +104,15 @@ _CATALOG_OPT = click.option(
     help="Skip the enrichment cache entirely (always queries the warehouse).",
 )
 @click.option(
+    "--timeout",
+    "query_timeout",
+    type=int,
+    default=None,
+    metavar="SECONDS",
+    help="Query timeout for warehouse enrichment. Overrides the profile value. "
+    "Increase for wide tables with many columns (default varies by adapter, typically 120s).",
+)
+@click.option(
     "--demo",
     "use_demo_data",
     is_flag=True,
@@ -122,6 +131,7 @@ def build(
     profiles_dir: Path | None,
     cache_ttl: int,
     no_cache: bool,
+    query_timeout: int | None,
     use_demo_data: bool,
 ) -> None:
     """Build a static feature catalog site from your dbt artifacts."""
@@ -162,6 +172,7 @@ def build(
             profiles_dir=profiles_dir,
             cache_ttl=cache_ttl,
             use_cache=not no_cache,
+            query_timeout=query_timeout,
         )
 
     render_catalog(catalog, output, enrichment=enrichment)
@@ -181,6 +192,7 @@ def _resolve_enrichment(
     profiles_dir: Path | None,
     cache_ttl: int,
     use_cache: bool,
+    query_timeout: int | None = None,
 ) -> dict[str, object] | None:
     """Decide what enrichment data (if any) the renderer should consume.
 
@@ -226,6 +238,7 @@ def _resolve_enrichment(
             target=target,
             profiles_dir=profiles_dir,
             cache=cache,
+            query_timeout=query_timeout,
         )
     except EnrichmentError as e:
         raise click.ClickException(f"Enrichment failed: {e}") from e

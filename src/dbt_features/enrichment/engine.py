@@ -28,6 +28,7 @@ def enrich_catalog(
     target: str | None = None,
     profiles_dir: Path | None = None,
     cache: EnrichmentCache | None = None,
+    query_timeout: int | None = None,
 ) -> dict[str, FreshnessSnapshot]:
     """Fetch warehouse facts for every feature group in ``catalog``.
 
@@ -50,6 +51,8 @@ def enrich_catalog(
                 return {uid: cached[uid] for uid in current_uids}
 
     profile = load_profile(profile_name, target=target, profiles_dir=profiles_dir)
+    if query_timeout is not None:
+        profile["_enrichment_timeout"] = query_timeout
     adapter = get_adapter(profile)
     try:
         results: dict[str, FreshnessSnapshot] = {}

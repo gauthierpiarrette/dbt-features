@@ -82,7 +82,11 @@ class BigQueryAdapter:
         if not self._default_schema:
             raise EnrichmentError("BigQuery profile missing 'dataset' (or 'schema').")
         self._default_project = project
-        self._timeout = float(profile.get("timeout_seconds", 60))
+        self._timeout = float(
+            profile.get("_enrichment_timeout")
+            or profile.get("timeout_seconds")
+            or 120
+        )
 
     @staticmethod
     def _client_from_json_dict(bigquery_module: Any, project: str, keyfile_json: Any) -> Any:

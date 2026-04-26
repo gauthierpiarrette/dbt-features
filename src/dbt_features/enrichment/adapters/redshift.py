@@ -49,12 +49,17 @@ class RedshiftAdapter:
         # community configs.
         is_iam = profile.get("method") == "iam" or bool(profile.get("iam"))
 
+        timeout = int(
+            profile.get("_enrichment_timeout")
+            or profile.get("connect_timeout")
+            or 120
+        )
         connect_kwargs: dict[str, Any] = {
             "database": database,
             "user": profile.get("user"),
             "host": profile.get("host"),
             "port": int(profile.get("port", 5439)),
-            "timeout": int(profile.get("connect_timeout", 30)),
+            "timeout": timeout,
         }
 
         if is_iam:
@@ -74,7 +79,7 @@ class RedshiftAdapter:
             if profile.get("session_token"):
                 connect_kwargs["session_token"] = profile["session_token"]
         else:
-            password = profile.get("password")
+            password = profile.get("password") or profile.get("pass")
             if not password:
                 raise EnrichmentError(
                     "Redshift profile missing 'password' (and IAM auth not enabled). "

@@ -41,13 +41,18 @@ class PostgresAdapter:
         if not database:
             raise EnrichmentError("Postgres profile missing 'dbname' (or 'database').")
 
+        timeout = int(
+            profile.get("_enrichment_timeout")
+            or profile.get("connect_timeout")
+            or 120
+        )
         connect_kwargs = {
             "host": host,
             "port": int(profile.get("port", 5432)),
             "user": profile.get("user"),
             "password": profile.get("password"),
             "dbname": database,
-            "connect_timeout": int(profile.get("connect_timeout", 10)),
+            "connect_timeout": timeout,
         }
         # Pass through SSL options if set — common in production setups.
         for k in ("sslmode", "sslrootcert", "sslcert", "sslkey"):
