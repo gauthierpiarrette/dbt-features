@@ -6,6 +6,21 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-04-26
+
+### Fixed
+- **Test nodes filtered from lineage.** Downstream lineage no longer
+  includes `not_null_*`, `unique_*`, and other test nodes — only real
+  model references appear. Keeps the lineage section scannable when
+  feature tables have dozens of tests.
+- **`--timeout` CLI flag** for warehouse enrichment. Overrides the
+  per-adapter default. Adapter defaults bumped from 10–30s to 120s to
+  handle wide tables with many `COUNT(DISTINCT)` columns at scale.
+- **Card description truncation** improved: 3-line clamp with
+  `max-height` fallback prevents verbose docstrings from breaking the
+  index card grid.
+- **Redshift `pass` alias** accepted alongside `password` in profiles.
+
 ## [0.3.0] - 2026-04-26 - UI redesign, ML model pages, faster search
 
 ### Added
