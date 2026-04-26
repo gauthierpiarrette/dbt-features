@@ -172,6 +172,19 @@ def test_feature_table_lineage_flag(project_dir: Path) -> None:
     assert refs["consumer_dashboard_metrics"].is_feature_table is False
 
 
+def test_test_nodes_excluded_from_downstream(project_dir: Path) -> None:
+    """dbt test nodes (not_null_*, unique_*) should not appear in downstream lineage."""
+
+    cat = parse_project(project_dir)
+    daily = next(g for g in cat.feature_groups if g.name == "customer_features_daily")
+    downstream_types = {r.resource_type for r in daily.downstream}
+    downstream_names = {r.name for r in daily.downstream}
+    assert "test" not in downstream_types
+    assert "not_null_customer_features_daily_customer_id" not in downstream_names
+    assert "unique_customer_features_daily_customer_id" not in downstream_names
+    assert len(daily.downstream) == 2
+
+
 def test_missing_manifest_raises_helpful(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError, match="manifest.json"):
         parse_project(tmp_path)

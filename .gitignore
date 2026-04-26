@@ -23,3 +23,5 @@ logs/
 *.duckdb.wal
 
 .DS_Store
+
+.notes/

@@ -98,8 +98,12 @@ def _build_catalog(manifest: dict[str, Any], dbt_catalog: dict[str, Any] | None)
 
     # Pass 2: build a reverse lineage index so we can resolve "downstream
     # consumers" — every node that depends on this feature table.
+    # Test nodes (not_null_*, unique_*, etc.) are excluded: they drown the
+    # 2–3 real downstream models in 20–40 test references per table.
     children_of: dict[str, list[str]] = {}
     for unique_id, node in nodes.items():
+        if node.get("resource_type") == "test":
+            continue
         for dep in node.get("depends_on", {}).get("nodes", []) or []:
             children_of.setdefault(dep, []).append(unique_id)
 

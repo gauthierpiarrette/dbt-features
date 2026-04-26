@@ -180,6 +180,36 @@
       "meta": {},
       "depends_on": {"nodes": ["model.jaffle_features.customer_features_daily"]},
       "columns": {}
+    },
+    "test.jaffle_features.not_null_customer_features_daily_customer_id": {
+      "name": "not_null_customer_features_daily_customer_id",
+      "unique_id": "test.jaffle_features.not_null_customer_features_daily_customer_id",
+      "resource_type": "test",
+      "package_name": "jaffle_features",
+      "path": "not_null_customer_features_daily_customer_id.sql",
+      "original_file_path": "tests/not_null_customer_features_daily_customer_id.sql",
+      "description": "",
+      "schema": "analytics",
+      "database": "warehouse",
+      "config": {"materialized": "test", "meta": {}},
+      "meta": {},
+      "depends_on": {"nodes": ["model.jaffle_features.customer_features_daily"]},
+      "columns": {}
+    },
+    "test.jaffle_features.unique_customer_features_daily_customer_id": {
+      "name": "unique_customer_features_daily_customer_id",
+      "unique_id": "test.jaffle_features.unique_customer_features_daily_customer_id",
+      "resource_type": "test",
+      "package_name": "jaffle_features",
+      "path": "unique_customer_features_daily_customer_id.sql",
+      "original_file_path": "tests/unique_customer_features_daily_customer_id.sql",
+      "description": "",
+      "schema": "analytics",
+      "database": "warehouse",
+      "config": {"materialized": "test", "meta": {}},
+      "meta": {},
+      "depends_on": {"nodes": ["model.jaffle_features.customer_features_daily"]},
+      "columns": {}
     }
   },
   "sources": {
